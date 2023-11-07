@@ -2,19 +2,53 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"spacecraft/controllers"
 	"spacecraft/ent"
 	"spacecraft/middleware/auth"
 
 	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 
 	_ "github.com/go-sql-driver/mysql"
 )
 
 func main() {
-	client, err := ent.Open("mysql", "user:password@tcp(127.0.0.1:3306)/spacecraft")
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("Error loading .env file")
+	}
+
+	dbUser, exists := os.LookupEnv("DATABASE_USER")
+	if !exists {
+		log.Fatal("DATABASE_USER not found in .env file")
+	}
+
+	dbPassword, exists := os.LookupEnv("DATABASE_PASSWORD")
+	if !exists {
+		log.Fatal("DATABASE_PASSWORD not found in .env file")
+	}
+
+	dbName, exists := os.LookupEnv("DATABASE_NAME")
+	if !exists {
+		log.Fatal("DATABASE_NAME not found in .env file")
+	}
+
+	dbHost, exists := os.LookupEnv("DATABASE_HOST")
+	if !exists {
+		log.Fatal("DATABASE_HOST not found in .env file")
+	}
+
+	dbPort, exists := os.LookupEnv("DATABASE_PORT")
+	if !exists {
+		log.Fatal("DATABASE_PORT not found in .env file")
+	}
+
+	dbURL := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", dbUser, dbPassword, dbHost, dbPort, dbName)
+	client, err := ent.Open("mysql", dbURL)
 	if err != nil {
 		log.Fatalf("failed opening connection to sqlite: %v", err)
 	}

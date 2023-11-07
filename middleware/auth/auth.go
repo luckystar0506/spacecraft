@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/dgrijalva/jwt-go"
@@ -22,10 +23,13 @@ func AuthorizationMiddleware(next http.HandlerFunc) http.HandlerFunc {
 				return
 			}
 
+			// Get the Secret Key from environment variable
+			secretKey := os.Getenv("SECRET_KEY")
+
 			tokenString := authHeader[1]
 			claims := jwt.MapClaims{}
 			_, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-				return []byte("<Your_Signing_Key>"), nil
+				return []byte(secretKey), nil
 			})
 
 			if err != nil {

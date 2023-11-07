@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"os"
 	"spacecraft/ent/user"
 
 	"github.com/dgrijalva/jwt-go"
@@ -81,7 +82,10 @@ func (sc *SpaceshipController) Login(w http.ResponseWriter, r *http.Request) {
 		"username": creds.Username,
 	})
 
-	tokenString, err := token.SignedString([]byte("<Your_Signing_Key>"))
+	// Get the Secret Key from environment variable
+	secretKey := os.Getenv("SECRET_KEY")
+
+	tokenString, err := token.SignedString([]byte(secretKey))
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
