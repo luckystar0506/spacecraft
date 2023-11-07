@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"spacecraft/controllers"
 	"spacecraft/ent"
+	"spacecraft/middleware/auth"
 
 	"github.com/gorilla/mux"
 
@@ -30,9 +31,9 @@ func main() {
 
 	r.HandleFunc("/spaceships", controller.GetSpaceships).Methods("GET")
 	r.HandleFunc("/spaceships/{id}", controller.GetSpaceship).Methods("GET")
-	r.HandleFunc("/spaceships", controller.CreateSpaceship).Methods("POST")
-	r.HandleFunc("/spaceships/{id}", controller.UpdateSpaceship).Methods("PUT")
-	r.HandleFunc("/spaceships/{id}", controller.DeleteSpaceship).Methods("DELETE")
+	r.HandleFunc("/spaceships", auth.AuthorizationMiddleware(controller.CreateSpaceship)).Methods("POST")
+	r.HandleFunc("/spaceships/{id}", auth.AuthorizationMiddleware(controller.UpdateSpaceship)).Methods("PUT")
+	r.HandleFunc("/spaceships/{id}", auth.AuthorizationMiddleware(controller.DeleteSpaceship)).Methods("DELETE")
 
 	r.HandleFunc("/signup", controller.Signup).Methods("POST")
 	r.HandleFunc("/login", controller.Login).Methods("POST")

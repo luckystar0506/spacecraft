@@ -31,7 +31,7 @@ type SpaceshipRequest struct {
 }
 
 type Result struct {
-	Success bool `json:"spacecraft"`
+	Success bool `json:"success"`
 }
 
 func NewSpaceshipController(client *ent.Client) *SpaceshipController {
