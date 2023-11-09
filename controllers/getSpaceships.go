@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"spacecraft/ent/spacecraft"
 )
@@ -16,7 +17,7 @@ type SpacecraftResponse struct {
 func (sc *SpaceshipController) GetSpaceships(w http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
 
-	spacecraftQuery := sc.client.Spacecraft.Query()
+	spacecraftQuery := sc.client.Spacecraft.Query().Where(spacecraft.DeletedAtIsNil())
 
 	if name := r.URL.Query().Get("name"); name != "" {
 		spacecraftQuery.Where(spacecraft.NameEQ(name))
@@ -33,7 +34,8 @@ func (sc *SpaceshipController) GetSpaceships(w http.ResponseWriter, r *http.Requ
 	dbSpacecrafts, err := spacecraftQuery.All(ctx)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Println(err)
+		http.Error(w, "Failed to get spacecrafts", http.StatusInternalServerError)
 		return
 	}
 

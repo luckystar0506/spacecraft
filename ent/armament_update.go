@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"spacecraft/ent/armament"
 	"spacecraft/ent/predicate"
-	"spacecraft/ent/spacecraft"
+	"spacecraft/ent/spacecraftarmament"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -34,27 +34,14 @@ func (au *ArmamentUpdate) SetTitle(s string) *ArmamentUpdate {
 	return au
 }
 
-// SetQty sets the "qty" field.
-func (au *ArmamentUpdate) SetQty(i int) *ArmamentUpdate {
-	au.mutation.ResetQty()
-	au.mutation.SetQty(i)
-	return au
-}
-
-// AddQty adds i to the "qty" field.
-func (au *ArmamentUpdate) AddQty(i int) *ArmamentUpdate {
-	au.mutation.AddQty(i)
-	return au
-}
-
-// AddSpacecraftIDs adds the "Spacecraft" edge to the Spacecraft entity by IDs.
+// AddSpacecraftIDs adds the "spacecrafts" edge to the SpacecraftArmament entity by IDs.
 func (au *ArmamentUpdate) AddSpacecraftIDs(ids ...int) *ArmamentUpdate {
 	au.mutation.AddSpacecraftIDs(ids...)
 	return au
 }
 
-// AddSpacecraft adds the "Spacecraft" edges to the Spacecraft entity.
-func (au *ArmamentUpdate) AddSpacecraft(s ...*Spacecraft) *ArmamentUpdate {
+// AddSpacecrafts adds the "spacecrafts" edges to the SpacecraftArmament entity.
+func (au *ArmamentUpdate) AddSpacecrafts(s ...*SpacecraftArmament) *ArmamentUpdate {
 	ids := make([]int, len(s))
 	for i := range s {
 		ids[i] = s[i].ID
@@ -67,20 +54,20 @@ func (au *ArmamentUpdate) Mutation() *ArmamentMutation {
 	return au.mutation
 }
 
-// ClearSpacecraft clears all "Spacecraft" edges to the Spacecraft entity.
-func (au *ArmamentUpdate) ClearSpacecraft() *ArmamentUpdate {
-	au.mutation.ClearSpacecraft()
+// ClearSpacecrafts clears all "spacecrafts" edges to the SpacecraftArmament entity.
+func (au *ArmamentUpdate) ClearSpacecrafts() *ArmamentUpdate {
+	au.mutation.ClearSpacecrafts()
 	return au
 }
 
-// RemoveSpacecraftIDs removes the "Spacecraft" edge to Spacecraft entities by IDs.
+// RemoveSpacecraftIDs removes the "spacecrafts" edge to SpacecraftArmament entities by IDs.
 func (au *ArmamentUpdate) RemoveSpacecraftIDs(ids ...int) *ArmamentUpdate {
 	au.mutation.RemoveSpacecraftIDs(ids...)
 	return au
 }
 
-// RemoveSpacecraft removes "Spacecraft" edges to Spacecraft entities.
-func (au *ArmamentUpdate) RemoveSpacecraft(s ...*Spacecraft) *ArmamentUpdate {
+// RemoveSpacecrafts removes "spacecrafts" edges to SpacecraftArmament entities.
+func (au *ArmamentUpdate) RemoveSpacecrafts(s ...*SpacecraftArmament) *ArmamentUpdate {
 	ids := make([]int, len(s))
 	for i := range s {
 		ids[i] = s[i].ID
@@ -127,34 +114,28 @@ func (au *ArmamentUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := au.mutation.Title(); ok {
 		_spec.SetField(armament.FieldTitle, field.TypeString, value)
 	}
-	if value, ok := au.mutation.Qty(); ok {
-		_spec.SetField(armament.FieldQty, field.TypeInt, value)
-	}
-	if value, ok := au.mutation.AddedQty(); ok {
-		_spec.AddField(armament.FieldQty, field.TypeInt, value)
-	}
-	if au.mutation.SpacecraftCleared() {
+	if au.mutation.SpacecraftsCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: true,
-			Table:   armament.SpacecraftTable,
-			Columns: armament.SpacecraftPrimaryKey,
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   armament.SpacecraftsTable,
+			Columns: []string{armament.SpacecraftsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(spacecraft.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(spacecraftarmament.FieldID, field.TypeInt),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := au.mutation.RemovedSpacecraftIDs(); len(nodes) > 0 && !au.mutation.SpacecraftCleared() {
+	if nodes := au.mutation.RemovedSpacecraftsIDs(); len(nodes) > 0 && !au.mutation.SpacecraftsCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: true,
-			Table:   armament.SpacecraftTable,
-			Columns: armament.SpacecraftPrimaryKey,
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   armament.SpacecraftsTable,
+			Columns: []string{armament.SpacecraftsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(spacecraft.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(spacecraftarmament.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -162,15 +143,15 @@ func (au *ArmamentUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := au.mutation.SpacecraftIDs(); len(nodes) > 0 {
+	if nodes := au.mutation.SpacecraftsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: true,
-			Table:   armament.SpacecraftTable,
-			Columns: armament.SpacecraftPrimaryKey,
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   armament.SpacecraftsTable,
+			Columns: []string{armament.SpacecraftsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(spacecraft.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(spacecraftarmament.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -204,27 +185,14 @@ func (auo *ArmamentUpdateOne) SetTitle(s string) *ArmamentUpdateOne {
 	return auo
 }
 
-// SetQty sets the "qty" field.
-func (auo *ArmamentUpdateOne) SetQty(i int) *ArmamentUpdateOne {
-	auo.mutation.ResetQty()
-	auo.mutation.SetQty(i)
-	return auo
-}
-
-// AddQty adds i to the "qty" field.
-func (auo *ArmamentUpdateOne) AddQty(i int) *ArmamentUpdateOne {
-	auo.mutation.AddQty(i)
-	return auo
-}
-
-// AddSpacecraftIDs adds the "Spacecraft" edge to the Spacecraft entity by IDs.
+// AddSpacecraftIDs adds the "spacecrafts" edge to the SpacecraftArmament entity by IDs.
 func (auo *ArmamentUpdateOne) AddSpacecraftIDs(ids ...int) *ArmamentUpdateOne {
 	auo.mutation.AddSpacecraftIDs(ids...)
 	return auo
 }
 
-// AddSpacecraft adds the "Spacecraft" edges to the Spacecraft entity.
-func (auo *ArmamentUpdateOne) AddSpacecraft(s ...*Spacecraft) *ArmamentUpdateOne {
+// AddSpacecrafts adds the "spacecrafts" edges to the SpacecraftArmament entity.
+func (auo *ArmamentUpdateOne) AddSpacecrafts(s ...*SpacecraftArmament) *ArmamentUpdateOne {
 	ids := make([]int, len(s))
 	for i := range s {
 		ids[i] = s[i].ID
@@ -237,20 +205,20 @@ func (auo *ArmamentUpdateOne) Mutation() *ArmamentMutation {
 	return auo.mutation
 }
 
-// ClearSpacecraft clears all "Spacecraft" edges to the Spacecraft entity.
-func (auo *ArmamentUpdateOne) ClearSpacecraft() *ArmamentUpdateOne {
-	auo.mutation.ClearSpacecraft()
+// ClearSpacecrafts clears all "spacecrafts" edges to the SpacecraftArmament entity.
+func (auo *ArmamentUpdateOne) ClearSpacecrafts() *ArmamentUpdateOne {
+	auo.mutation.ClearSpacecrafts()
 	return auo
 }
 
-// RemoveSpacecraftIDs removes the "Spacecraft" edge to Spacecraft entities by IDs.
+// RemoveSpacecraftIDs removes the "spacecrafts" edge to SpacecraftArmament entities by IDs.
 func (auo *ArmamentUpdateOne) RemoveSpacecraftIDs(ids ...int) *ArmamentUpdateOne {
 	auo.mutation.RemoveSpacecraftIDs(ids...)
 	return auo
 }
 
-// RemoveSpacecraft removes "Spacecraft" edges to Spacecraft entities.
-func (auo *ArmamentUpdateOne) RemoveSpacecraft(s ...*Spacecraft) *ArmamentUpdateOne {
+// RemoveSpacecrafts removes "spacecrafts" edges to SpacecraftArmament entities.
+func (auo *ArmamentUpdateOne) RemoveSpacecrafts(s ...*SpacecraftArmament) *ArmamentUpdateOne {
 	ids := make([]int, len(s))
 	for i := range s {
 		ids[i] = s[i].ID
@@ -327,34 +295,28 @@ func (auo *ArmamentUpdateOne) sqlSave(ctx context.Context) (_node *Armament, err
 	if value, ok := auo.mutation.Title(); ok {
 		_spec.SetField(armament.FieldTitle, field.TypeString, value)
 	}
-	if value, ok := auo.mutation.Qty(); ok {
-		_spec.SetField(armament.FieldQty, field.TypeInt, value)
-	}
-	if value, ok := auo.mutation.AddedQty(); ok {
-		_spec.AddField(armament.FieldQty, field.TypeInt, value)
-	}
-	if auo.mutation.SpacecraftCleared() {
+	if auo.mutation.SpacecraftsCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: true,
-			Table:   armament.SpacecraftTable,
-			Columns: armament.SpacecraftPrimaryKey,
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   armament.SpacecraftsTable,
+			Columns: []string{armament.SpacecraftsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(spacecraft.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(spacecraftarmament.FieldID, field.TypeInt),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := auo.mutation.RemovedSpacecraftIDs(); len(nodes) > 0 && !auo.mutation.SpacecraftCleared() {
+	if nodes := auo.mutation.RemovedSpacecraftsIDs(); len(nodes) > 0 && !auo.mutation.SpacecraftsCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: true,
-			Table:   armament.SpacecraftTable,
-			Columns: armament.SpacecraftPrimaryKey,
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   armament.SpacecraftsTable,
+			Columns: []string{armament.SpacecraftsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(spacecraft.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(spacecraftarmament.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -362,15 +324,15 @@ func (auo *ArmamentUpdateOne) sqlSave(ctx context.Context) (_node *Armament, err
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := auo.mutation.SpacecraftIDs(); len(nodes) > 0 {
+	if nodes := auo.mutation.SpacecraftsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: true,
-			Table:   armament.SpacecraftTable,
-			Columns: armament.SpacecraftPrimaryKey,
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   armament.SpacecraftsTable,
+			Columns: []string{armament.SpacecraftsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(spacecraft.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(spacecraftarmament.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

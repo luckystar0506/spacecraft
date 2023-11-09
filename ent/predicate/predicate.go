@@ -12,5 +12,8 @@ type Armament func(*sql.Selector)
 // Spacecraft is the predicate function for spacecraft builders.
 type Spacecraft func(*sql.Selector)
 
+// SpacecraftArmament is the predicate function for spacecraftarmament builders.
+type SpacecraftArmament func(*sql.Selector)
+
 // User is the predicate function for user builders.
 type User func(*sql.Selector)

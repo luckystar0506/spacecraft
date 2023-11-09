@@ -18,8 +18,6 @@ type Armament struct {
 	ID int `json:"id,omitempty"`
 	// Title holds the value of the "title" field.
 	Title string `json:"title,omitempty"`
-	// Qty holds the value of the "qty" field.
-	Qty int `json:"qty,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ArmamentQuery when eager-loading is set.
 	Edges        ArmamentEdges `json:"edges"`
@@ -28,20 +26,20 @@ type Armament struct {
 
 // ArmamentEdges holds the relations/edges for other nodes in the graph.
 type ArmamentEdges struct {
-	// Spacecraft holds the value of the Spacecraft edge.
-	Spacecraft []*Spacecraft `json:"Spacecraft,omitempty"`
+	// Spacecrafts holds the value of the spacecrafts edge.
+	Spacecrafts []*SpacecraftArmament `json:"spacecrafts,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
 	loadedTypes [1]bool
 }
 
-// SpacecraftOrErr returns the Spacecraft value or an error if the edge
+// SpacecraftsOrErr returns the Spacecrafts value or an error if the edge
 // was not loaded in eager-loading.
-func (e ArmamentEdges) SpacecraftOrErr() ([]*Spacecraft, error) {
+func (e ArmamentEdges) SpacecraftsOrErr() ([]*SpacecraftArmament, error) {
 	if e.loadedTypes[0] {
-		return e.Spacecraft, nil
+		return e.Spacecrafts, nil
 	}
-	return nil, &NotLoadedError{edge: "Spacecraft"}
+	return nil, &NotLoadedError{edge: "spacecrafts"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -49,7 +47,7 @@ func (*Armament) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case armament.FieldID, armament.FieldQty:
+		case armament.FieldID:
 			values[i] = new(sql.NullInt64)
 		case armament.FieldTitle:
 			values[i] = new(sql.NullString)
@@ -80,12 +78,6 @@ func (a *Armament) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				a.Title = value.String
 			}
-		case armament.FieldQty:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field qty", values[i])
-			} else if value.Valid {
-				a.Qty = int(value.Int64)
-			}
 		default:
 			a.selectValues.Set(columns[i], values[i])
 		}
@@ -99,9 +91,9 @@ func (a *Armament) Value(name string) (ent.Value, error) {
 	return a.selectValues.Get(name)
 }
 
-// QuerySpacecraft queries the "Spacecraft" edge of the Armament entity.
-func (a *Armament) QuerySpacecraft() *SpacecraftQuery {
-	return NewArmamentClient(a.config).QuerySpacecraft(a)
+// QuerySpacecrafts queries the "spacecrafts" edge of the Armament entity.
+func (a *Armament) QuerySpacecrafts() *SpacecraftArmamentQuery {
+	return NewArmamentClient(a.config).QuerySpacecrafts(a)
 }
 
 // Update returns a builder for updating this Armament.
@@ -129,9 +121,6 @@ func (a *Armament) String() string {
 	builder.WriteString(fmt.Sprintf("id=%v, ", a.ID))
 	builder.WriteString("title=")
 	builder.WriteString(a.Title)
-	builder.WriteString(", ")
-	builder.WriteString("qty=")
-	builder.WriteString(fmt.Sprintf("%v", a.Qty))
 	builder.WriteByte(')')
 	return builder.String()
 }

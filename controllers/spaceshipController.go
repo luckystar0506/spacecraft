@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"spacecraft/ent"
+	"spacecraft/ent/armament"
 )
 
 type SpaceshipController struct {
@@ -57,41 +58,61 @@ func (sc *SpaceshipController) CreateSpaceship(w http.ResponseWriter, r *http.Re
 	tx, err := sc.client.Tx(ctx)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to start transaction", http.StatusInternalServerError)
 		return
 	}
 
-	arms := make([]*ent.Armament, len(req.Armaments))
-
-	for i, arm := range req.Armaments {
-		arms[i], err = tx.Armament.Create().SetTitle(arm.Title).SetQty(arm.Qty).Save(ctx)
-		if err != nil {
-			tx.Rollback()
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	}
-
-	_, err = tx.Spacecraft.Create().
+	newSpacecraft, err := tx.Spacecraft.Create().
 		SetName(req.Spacecraft.Name).
 		SetClass(req.Spacecraft.Class).
 		SetCrew(req.Spacecraft.Crew).
 		SetImage(req.Spacecraft.Image).
 		SetValue(req.Spacecraft.Value).
 		SetStatus(req.Spacecraft.Status).
-		AddArmaments(arms...).
 		Save(ctx)
 
 	if err != nil {
 		tx.Rollback()
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to create spacecraft", http.StatusInternalServerError)
+		return
+	}
+
+	armBuilders := make([]*ent.ArmamentCreate, len(req.Armaments))
+	armTitles := make([]string, len(req.Armaments))
+	for i, arm := range req.Armaments {
+		armBuilders[i] = tx.Armament.Create().SetTitle(arm.Title)
+		armTitles[i] = arm.Title
+	}
+
+	err = tx.Armament.CreateBulk(armBuilders...).OnConflict().DoNothing().Exec(ctx)
+	if err != nil {
+		tx.Rollback()
+		http.Error(w, "Failed to create armaments", http.StatusInternalServerError)
+		return
+	}
+
+	armaments, err := tx.Armament.Query().Where(armament.TitleIn(armTitles...)).All(ctx)
+	if err != nil {
+		tx.Rollback()
+		http.Error(w, "Failed to query armaments", http.StatusInternalServerError)
+		return
+	}
+
+	spacecraftarmamentBuilders := make([]*ent.SpacecraftArmamentCreate, len(req.Armaments))
+	for i, arm := range req.Armaments {
+		spacecraftarmamentBuilders[i] = tx.SpacecraftArmament.Create().SetSpacecraft(newSpacecraft).SetArmament(armaments[i]).SetQty(arm.Qty)
+	}
+	err = tx.SpacecraftArmament.CreateBulk(spacecraftarmamentBuilders...).Exec(ctx)
+	if err != nil {
+		tx.Rollback()
+		http.Error(w, "Failed to create spacecraft armaments", http.StatusInternalServerError)
 		return
 	}
 
 	err = tx.Commit()
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to commit transaction", http.StatusInternalServerError)
 		return
 	}
 

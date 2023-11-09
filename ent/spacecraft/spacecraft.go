@@ -3,6 +3,8 @@
 package spacecraft
 
 import (
+	"time"
+
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 )
@@ -24,15 +26,23 @@ const (
 	FieldValue = "value"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
+	// FieldCreatedAt holds the string denoting the created_at field in the database.
+	FieldCreatedAt = "created_at"
+	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
+	FieldUpdatedAt = "updated_at"
+	// FieldDeletedAt holds the string denoting the deleted_at field in the database.
+	FieldDeletedAt = "deleted_at"
 	// EdgeArmaments holds the string denoting the armaments edge name in mutations.
 	EdgeArmaments = "armaments"
 	// Table holds the table name of the spacecraft in the database.
 	Table = "spacecrafts"
-	// ArmamentsTable is the table that holds the armaments relation/edge. The primary key declared below.
+	// ArmamentsTable is the table that holds the armaments relation/edge.
 	ArmamentsTable = "spacecraft_armaments"
-	// ArmamentsInverseTable is the table name for the Armament entity.
-	// It exists in this package in order to avoid circular dependency with the "armament" package.
-	ArmamentsInverseTable = "armaments"
+	// ArmamentsInverseTable is the table name for the SpacecraftArmament entity.
+	// It exists in this package in order to avoid circular dependency with the "spacecraftarmament" package.
+	ArmamentsInverseTable = "spacecraft_armaments"
+	// ArmamentsColumn is the table column denoting the armaments relation/edge.
+	ArmamentsColumn = "spacecraft_id"
 )
 
 // Columns holds all SQL columns for spacecraft fields.
@@ -44,13 +54,10 @@ var Columns = []string{
 	FieldImage,
 	FieldValue,
 	FieldStatus,
+	FieldCreatedAt,
+	FieldUpdatedAt,
+	FieldDeletedAt,
 }
-
-var (
-	// ArmamentsPrimaryKey and ArmamentsColumn2 are the table columns denoting the
-	// primary key for the armaments relation (M2M).
-	ArmamentsPrimaryKey = []string{"spacecraft_id", "armament_id"}
-)
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
@@ -61,6 +68,11 @@ func ValidColumn(column string) bool {
 	}
 	return false
 }
+
+var (
+	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
+	UpdateDefaultUpdatedAt func() time.Time
+)
 
 // OrderOption defines the ordering options for the Spacecraft queries.
 type OrderOption func(*sql.Selector)
@@ -100,6 +112,21 @@ func ByStatus(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldStatus, opts...).ToFunc()
 }
 
+// ByCreatedAt orders the results by the created_at field.
+func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
+}
+
+// ByUpdatedAt orders the results by the updated_at field.
+func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
+}
+
+// ByDeletedAt orders the results by the deleted_at field.
+func ByDeletedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDeletedAt, opts...).ToFunc()
+}
+
 // ByArmamentsCount orders the results by armaments count.
 func ByArmamentsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -117,6 +144,6 @@ func newArmamentsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(ArmamentsInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.M2M, false, ArmamentsTable, ArmamentsPrimaryKey...),
+		sqlgraph.Edge(sqlgraph.O2M, false, ArmamentsTable, ArmamentsColumn),
 	)
 }

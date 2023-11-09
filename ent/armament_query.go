@@ -9,7 +9,7 @@ import (
 	"math"
 	"spacecraft/ent/armament"
 	"spacecraft/ent/predicate"
-	"spacecraft/ent/spacecraft"
+	"spacecraft/ent/spacecraftarmament"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -19,11 +19,11 @@ import (
 // ArmamentQuery is the builder for querying Armament entities.
 type ArmamentQuery struct {
 	config
-	ctx            *QueryContext
-	order          []armament.OrderOption
-	inters         []Interceptor
-	predicates     []predicate.Armament
-	withSpacecraft *SpacecraftQuery
+	ctx             *QueryContext
+	order           []armament.OrderOption
+	inters          []Interceptor
+	predicates      []predicate.Armament
+	withSpacecrafts *SpacecraftArmamentQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -60,9 +60,9 @@ func (aq *ArmamentQuery) Order(o ...armament.OrderOption) *ArmamentQuery {
 	return aq
 }
 
-// QuerySpacecraft chains the current query on the "Spacecraft" edge.
-func (aq *ArmamentQuery) QuerySpacecraft() *SpacecraftQuery {
-	query := (&SpacecraftClient{config: aq.config}).Query()
+// QuerySpacecrafts chains the current query on the "spacecrafts" edge.
+func (aq *ArmamentQuery) QuerySpacecrafts() *SpacecraftArmamentQuery {
+	query := (&SpacecraftArmamentClient{config: aq.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := aq.prepareQuery(ctx); err != nil {
 			return nil, err
@@ -73,8 +73,8 @@ func (aq *ArmamentQuery) QuerySpacecraft() *SpacecraftQuery {
 		}
 		step := sqlgraph.NewStep(
 			sqlgraph.From(armament.Table, armament.FieldID, selector),
-			sqlgraph.To(spacecraft.Table, spacecraft.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, armament.SpacecraftTable, armament.SpacecraftPrimaryKey...),
+			sqlgraph.To(spacecraftarmament.Table, spacecraftarmament.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, armament.SpacecraftsTable, armament.SpacecraftsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(aq.driver.Dialect(), step)
 		return fromU, nil
@@ -269,26 +269,26 @@ func (aq *ArmamentQuery) Clone() *ArmamentQuery {
 		return nil
 	}
 	return &ArmamentQuery{
-		config:         aq.config,
-		ctx:            aq.ctx.Clone(),
-		order:          append([]armament.OrderOption{}, aq.order...),
-		inters:         append([]Interceptor{}, aq.inters...),
-		predicates:     append([]predicate.Armament{}, aq.predicates...),
-		withSpacecraft: aq.withSpacecraft.Clone(),
+		config:          aq.config,
+		ctx:             aq.ctx.Clone(),
+		order:           append([]armament.OrderOption{}, aq.order...),
+		inters:          append([]Interceptor{}, aq.inters...),
+		predicates:      append([]predicate.Armament{}, aq.predicates...),
+		withSpacecrafts: aq.withSpacecrafts.Clone(),
 		// clone intermediate query.
 		sql:  aq.sql.Clone(),
 		path: aq.path,
 	}
 }
 
-// WithSpacecraft tells the query-builder to eager-load the nodes that are connected to
-// the "Spacecraft" edge. The optional arguments are used to configure the query builder of the edge.
-func (aq *ArmamentQuery) WithSpacecraft(opts ...func(*SpacecraftQuery)) *ArmamentQuery {
-	query := (&SpacecraftClient{config: aq.config}).Query()
+// WithSpacecrafts tells the query-builder to eager-load the nodes that are connected to
+// the "spacecrafts" edge. The optional arguments are used to configure the query builder of the edge.
+func (aq *ArmamentQuery) WithSpacecrafts(opts ...func(*SpacecraftArmamentQuery)) *ArmamentQuery {
+	query := (&SpacecraftArmamentClient{config: aq.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
-	aq.withSpacecraft = query
+	aq.withSpacecrafts = query
 	return aq
 }
 
@@ -371,7 +371,7 @@ func (aq *ArmamentQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Arm
 		nodes       = []*Armament{}
 		_spec       = aq.querySpec()
 		loadedTypes = [1]bool{
-			aq.withSpacecraft != nil,
+			aq.withSpacecrafts != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -392,74 +392,43 @@ func (aq *ArmamentQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Arm
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
-	if query := aq.withSpacecraft; query != nil {
-		if err := aq.loadSpacecraft(ctx, query, nodes,
-			func(n *Armament) { n.Edges.Spacecraft = []*Spacecraft{} },
-			func(n *Armament, e *Spacecraft) { n.Edges.Spacecraft = append(n.Edges.Spacecraft, e) }); err != nil {
+	if query := aq.withSpacecrafts; query != nil {
+		if err := aq.loadSpacecrafts(ctx, query, nodes,
+			func(n *Armament) { n.Edges.Spacecrafts = []*SpacecraftArmament{} },
+			func(n *Armament, e *SpacecraftArmament) { n.Edges.Spacecrafts = append(n.Edges.Spacecrafts, e) }); err != nil {
 			return nil, err
 		}
 	}
 	return nodes, nil
 }
 
-func (aq *ArmamentQuery) loadSpacecraft(ctx context.Context, query *SpacecraftQuery, nodes []*Armament, init func(*Armament), assign func(*Armament, *Spacecraft)) error {
-	edgeIDs := make([]driver.Value, len(nodes))
-	byID := make(map[int]*Armament)
-	nids := make(map[int]map[*Armament]struct{})
-	for i, node := range nodes {
-		edgeIDs[i] = node.ID
-		byID[node.ID] = node
+func (aq *ArmamentQuery) loadSpacecrafts(ctx context.Context, query *SpacecraftArmamentQuery, nodes []*Armament, init func(*Armament), assign func(*Armament, *SpacecraftArmament)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Armament)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
 		if init != nil {
-			init(node)
+			init(nodes[i])
 		}
 	}
-	query.Where(func(s *sql.Selector) {
-		joinT := sql.Table(armament.SpacecraftTable)
-		s.Join(joinT).On(s.C(spacecraft.FieldID), joinT.C(armament.SpacecraftPrimaryKey[0]))
-		s.Where(sql.InValues(joinT.C(armament.SpacecraftPrimaryKey[1]), edgeIDs...))
-		columns := s.SelectedColumns()
-		s.Select(joinT.C(armament.SpacecraftPrimaryKey[1]))
-		s.AppendSelect(columns...)
-		s.SetDistinct(false)
-	})
-	if err := query.prepareQuery(ctx); err != nil {
-		return err
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(spacecraftarmament.FieldArmamentID)
 	}
-	qr := QuerierFunc(func(ctx context.Context, q Query) (Value, error) {
-		return query.sqlAll(ctx, func(_ context.Context, spec *sqlgraph.QuerySpec) {
-			assign := spec.Assign
-			values := spec.ScanValues
-			spec.ScanValues = func(columns []string) ([]any, error) {
-				values, err := values(columns[1:])
-				if err != nil {
-					return nil, err
-				}
-				return append([]any{new(sql.NullInt64)}, values...), nil
-			}
-			spec.Assign = func(columns []string, values []any) error {
-				outValue := int(values[0].(*sql.NullInt64).Int64)
-				inValue := int(values[1].(*sql.NullInt64).Int64)
-				if nids[inValue] == nil {
-					nids[inValue] = map[*Armament]struct{}{byID[outValue]: {}}
-					return assign(columns[1:], values[1:])
-				}
-				nids[inValue][byID[outValue]] = struct{}{}
-				return nil
-			}
-		})
-	})
-	neighbors, err := withInterceptors[[]*Spacecraft](ctx, query, qr, query.inters)
+	query.Where(predicate.SpacecraftArmament(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(armament.SpacecraftsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
 	if err != nil {
 		return err
 	}
 	for _, n := range neighbors {
-		nodes, ok := nids[n.ID]
+		fk := n.ArmamentID
+		node, ok := nodeids[fk]
 		if !ok {
-			return fmt.Errorf(`unexpected "Spacecraft" node returned %v`, n.ID)
+			return fmt.Errorf(`unexpected referenced foreign-key "armament_id" returned %v for node %v`, fk, n.ID)
 		}
-		for kn := range nodes {
-			assign(kn, n)
-		}
+		assign(node, n)
 	}
 	return nil
 }

@@ -1,7 +1,10 @@
 package schema
 
 import (
+	"time"
+
 	"entgo.io/ent"
+	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 )
@@ -20,12 +23,15 @@ func (Spacecraft) Fields() []ent.Field {
 		field.String("image"),
 		field.Float("value"),
 		field.String("status"),
+		field.Time("created_at").Optional().Annotations(entsql.Default("CURRENT_TIMESTAMP")),
+		field.Time("updated_at").Optional().Annotations(entsql.Default("CURRENT_TIMESTAMP")).UpdateDefault(time.Now),
+		field.Time("deleted_at").Optional().Nillable(),
 	}
 }
 
 // Edges of the Spacecraft.
 func (Spacecraft) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.To("armaments", Armament.Type),
+		edge.To("armaments", SpacecraftArmament.Type),
 	}
 }

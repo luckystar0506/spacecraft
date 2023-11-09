@@ -16,29 +16,35 @@ func TestGetSpaceShips(t *testing.T) {
 	defer client.Close()
 
 	ctx := context.Background()
-	arm1 := client.Armament.Create().SetTitle("Ion Cannon").SetQty(10).SaveX(ctx)
-	arm2 := client.Armament.Create().SetTitle("Laser Cannon").SetQty(20).SaveX(ctx)
-	arm3 := client.Armament.Create().SetTitle("Missile Launcher").SetQty(30).SaveX(ctx)
+	armamentBulk := client.Armament.CreateBulk(
+		client.Armament.Create().SetTitle("Ion Cannon"),
+		client.Armament.Create().SetTitle("Laser Cannon"),
+		client.Armament.Create().SetTitle("Missile Launcher"),
+	).SaveX(ctx)
 
-	client.Spacecraft.Create().
-		SetName("Star Destroyer").
-		SetClass("Destroyer").
-		SetCrew(5000).
-		SetImage("https://starwars.com/star_destroyer.png").
-		SetValue(10000).
-		SetStatus("Destroyed").
-		AddArmaments(arm1, arm2).
-		SaveX(ctx)
+	spacecraftBulk := client.Spacecraft.CreateBulk(
+		client.Spacecraft.Create().
+			SetName("Star Destroyer").
+			SetClass("Destroyer").
+			SetCrew(5000).
+			SetImage("https://starwars.com/star_destroyer.png").
+			SetValue(10000).
+			SetStatus("Destroyed"),
+		client.Spacecraft.Create().
+			SetName("X-wing starfighter").
+			SetClass("Starfighter").
+			SetCrew(1).
+			SetImage("https://starwars.com/x-wing.png").
+			SetValue(2000).
+			SetStatus("In crew training"),
+	).SaveX(ctx)
 
-	client.Spacecraft.Create().
-		SetName("X-wing starfighter").
-		SetClass("Starfighter").
-		SetCrew(1).
-		SetImage("https://starwars.com/x-wing.png").
-		SetValue(2000).
-		SetStatus("In crew training").
-		AddArmaments(arm3).
-		SaveX(ctx)
+	_ = client.SpacecraftArmament.CreateBulk(
+		client.SpacecraftArmament.Create().SetArmament(armamentBulk[0]).SetSpacecraft(spacecraftBulk[0]).SetQty(10),
+		client.SpacecraftArmament.Create().SetArmament(armamentBulk[1]).SetSpacecraft(spacecraftBulk[0]).SetQty(20),
+		client.SpacecraftArmament.Create().SetArmament(armamentBulk[1]).SetSpacecraft(spacecraftBulk[1]).SetQty(30),
+		client.SpacecraftArmament.Create().SetArmament(armamentBulk[2]).SetSpacecraft(spacecraftBulk[1]).SetQty(40),
+	).SaveX(ctx)
 
 	ctrl := controllers.NewSpaceshipController(client)
 

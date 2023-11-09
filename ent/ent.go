@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"spacecraft/ent/armament"
 	"spacecraft/ent/spacecraft"
+	"spacecraft/ent/spacecraftarmament"
 	"spacecraft/ent/user"
 	"sync"
 
@@ -75,9 +76,10 @@ var (
 func checkColumn(table, column string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			armament.Table:   armament.ValidColumn,
-			spacecraft.Table: spacecraft.ValidColumn,
-			user.Table:       user.ValidColumn,
+			armament.Table:           armament.ValidColumn,
+			spacecraft.Table:         spacecraft.ValidColumn,
+			spacecraftarmament.Table: spacecraftarmament.ValidColumn,
+			user.Table:               user.ValidColumn,
 		})
 	})
 	return columnCheck(table, column)

@@ -9,8 +9,10 @@ import (
 	"spacecraft/ent/armament"
 	"spacecraft/ent/predicate"
 	"spacecraft/ent/spacecraft"
+	"spacecraft/ent/spacecraftarmament"
 	"spacecraft/ent/user"
 	"sync"
+	"time"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
@@ -25,9 +27,10 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeArmament   = "Armament"
-	TypeSpacecraft = "Spacecraft"
-	TypeUser       = "User"
+	TypeArmament           = "Armament"
+	TypeSpacecraft         = "Spacecraft"
+	TypeSpacecraftArmament = "SpacecraftArmament"
+	TypeUser               = "User"
 )
 
 // ArmamentMutation represents an operation that mutates the Armament nodes in the graph.
@@ -37,12 +40,10 @@ type ArmamentMutation struct {
 	typ                string
 	id                 *int
 	title              *string
-	qty                *int
-	addqty             *int
 	clearedFields      map[string]struct{}
-	_Spacecraft        map[int]struct{}
-	removed_Spacecraft map[int]struct{}
-	cleared_Spacecraft bool
+	spacecrafts        map[int]struct{}
+	removedspacecrafts map[int]struct{}
+	clearedspacecrafts bool
 	done               bool
 	oldValue           func(context.Context) (*Armament, error)
 	predicates         []predicate.Armament
@@ -182,114 +183,58 @@ func (m *ArmamentMutation) ResetTitle() {
 	m.title = nil
 }
 
-// SetQty sets the "qty" field.
-func (m *ArmamentMutation) SetQty(i int) {
-	m.qty = &i
-	m.addqty = nil
-}
-
-// Qty returns the value of the "qty" field in the mutation.
-func (m *ArmamentMutation) Qty() (r int, exists bool) {
-	v := m.qty
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldQty returns the old "qty" field's value of the Armament entity.
-// If the Armament object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *ArmamentMutation) OldQty(ctx context.Context) (v int, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldQty is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldQty requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldQty: %w", err)
-	}
-	return oldValue.Qty, nil
-}
-
-// AddQty adds i to the "qty" field.
-func (m *ArmamentMutation) AddQty(i int) {
-	if m.addqty != nil {
-		*m.addqty += i
-	} else {
-		m.addqty = &i
-	}
-}
-
-// AddedQty returns the value that was added to the "qty" field in this mutation.
-func (m *ArmamentMutation) AddedQty() (r int, exists bool) {
-	v := m.addqty
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ResetQty resets all changes to the "qty" field.
-func (m *ArmamentMutation) ResetQty() {
-	m.qty = nil
-	m.addqty = nil
-}
-
-// AddSpacecraftIDs adds the "Spacecraft" edge to the Spacecraft entity by ids.
+// AddSpacecraftIDs adds the "spacecrafts" edge to the SpacecraftArmament entity by ids.
 func (m *ArmamentMutation) AddSpacecraftIDs(ids ...int) {
-	if m._Spacecraft == nil {
-		m._Spacecraft = make(map[int]struct{})
+	if m.spacecrafts == nil {
+		m.spacecrafts = make(map[int]struct{})
 	}
 	for i := range ids {
-		m._Spacecraft[ids[i]] = struct{}{}
+		m.spacecrafts[ids[i]] = struct{}{}
 	}
 }
 
-// ClearSpacecraft clears the "Spacecraft" edge to the Spacecraft entity.
-func (m *ArmamentMutation) ClearSpacecraft() {
-	m.cleared_Spacecraft = true
+// ClearSpacecrafts clears the "spacecrafts" edge to the SpacecraftArmament entity.
+func (m *ArmamentMutation) ClearSpacecrafts() {
+	m.clearedspacecrafts = true
 }
 
-// SpacecraftCleared reports if the "Spacecraft" edge to the Spacecraft entity was cleared.
-func (m *ArmamentMutation) SpacecraftCleared() bool {
-	return m.cleared_Spacecraft
+// SpacecraftsCleared reports if the "spacecrafts" edge to the SpacecraftArmament entity was cleared.
+func (m *ArmamentMutation) SpacecraftsCleared() bool {
+	return m.clearedspacecrafts
 }
 
-// RemoveSpacecraftIDs removes the "Spacecraft" edge to the Spacecraft entity by IDs.
+// RemoveSpacecraftIDs removes the "spacecrafts" edge to the SpacecraftArmament entity by IDs.
 func (m *ArmamentMutation) RemoveSpacecraftIDs(ids ...int) {
-	if m.removed_Spacecraft == nil {
-		m.removed_Spacecraft = make(map[int]struct{})
+	if m.removedspacecrafts == nil {
+		m.removedspacecrafts = make(map[int]struct{})
 	}
 	for i := range ids {
-		delete(m._Spacecraft, ids[i])
-		m.removed_Spacecraft[ids[i]] = struct{}{}
+		delete(m.spacecrafts, ids[i])
+		m.removedspacecrafts[ids[i]] = struct{}{}
 	}
 }
 
-// RemovedSpacecraft returns the removed IDs of the "Spacecraft" edge to the Spacecraft entity.
-func (m *ArmamentMutation) RemovedSpacecraftIDs() (ids []int) {
-	for id := range m.removed_Spacecraft {
+// RemovedSpacecrafts returns the removed IDs of the "spacecrafts" edge to the SpacecraftArmament entity.
+func (m *ArmamentMutation) RemovedSpacecraftsIDs() (ids []int) {
+	for id := range m.removedspacecrafts {
 		ids = append(ids, id)
 	}
 	return
 }
 
-// SpacecraftIDs returns the "Spacecraft" edge IDs in the mutation.
-func (m *ArmamentMutation) SpacecraftIDs() (ids []int) {
-	for id := range m._Spacecraft {
+// SpacecraftsIDs returns the "spacecrafts" edge IDs in the mutation.
+func (m *ArmamentMutation) SpacecraftsIDs() (ids []int) {
+	for id := range m.spacecrafts {
 		ids = append(ids, id)
 	}
 	return
 }
 
-// ResetSpacecraft resets all changes to the "Spacecraft" edge.
-func (m *ArmamentMutation) ResetSpacecraft() {
-	m._Spacecraft = nil
-	m.cleared_Spacecraft = false
-	m.removed_Spacecraft = nil
+// ResetSpacecrafts resets all changes to the "spacecrafts" edge.
+func (m *ArmamentMutation) ResetSpacecrafts() {
+	m.spacecrafts = nil
+	m.clearedspacecrafts = false
+	m.removedspacecrafts = nil
 }
 
 // Where appends a list predicates to the ArmamentMutation builder.
@@ -326,12 +271,9 @@ func (m *ArmamentMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ArmamentMutation) Fields() []string {
-	fields := make([]string, 0, 2)
+	fields := make([]string, 0, 1)
 	if m.title != nil {
 		fields = append(fields, armament.FieldTitle)
-	}
-	if m.qty != nil {
-		fields = append(fields, armament.FieldQty)
 	}
 	return fields
 }
@@ -343,8 +285,6 @@ func (m *ArmamentMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case armament.FieldTitle:
 		return m.Title()
-	case armament.FieldQty:
-		return m.Qty()
 	}
 	return nil, false
 }
@@ -356,8 +296,6 @@ func (m *ArmamentMutation) OldField(ctx context.Context, name string) (ent.Value
 	switch name {
 	case armament.FieldTitle:
 		return m.OldTitle(ctx)
-	case armament.FieldQty:
-		return m.OldQty(ctx)
 	}
 	return nil, fmt.Errorf("unknown Armament field %s", name)
 }
@@ -374,13 +312,6 @@ func (m *ArmamentMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetTitle(v)
 		return nil
-	case armament.FieldQty:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetQty(v)
-		return nil
 	}
 	return fmt.Errorf("unknown Armament field %s", name)
 }
@@ -388,21 +319,13 @@ func (m *ArmamentMutation) SetField(name string, value ent.Value) error {
 // AddedFields returns all numeric fields that were incremented/decremented during
 // this mutation.
 func (m *ArmamentMutation) AddedFields() []string {
-	var fields []string
-	if m.addqty != nil {
-		fields = append(fields, armament.FieldQty)
-	}
-	return fields
+	return nil
 }
 
 // AddedField returns the numeric value that was incremented/decremented on a field
 // with the given name. The second boolean return value indicates that this field
 // was not set, or was not defined in the schema.
 func (m *ArmamentMutation) AddedField(name string) (ent.Value, bool) {
-	switch name {
-	case armament.FieldQty:
-		return m.AddedQty()
-	}
 	return nil, false
 }
 
@@ -411,13 +334,6 @@ func (m *ArmamentMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *ArmamentMutation) AddField(name string, value ent.Value) error {
 	switch name {
-	case armament.FieldQty:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddQty(v)
-		return nil
 	}
 	return fmt.Errorf("unknown Armament numeric field %s", name)
 }
@@ -448,9 +364,6 @@ func (m *ArmamentMutation) ResetField(name string) error {
 	case armament.FieldTitle:
 		m.ResetTitle()
 		return nil
-	case armament.FieldQty:
-		m.ResetQty()
-		return nil
 	}
 	return fmt.Errorf("unknown Armament field %s", name)
 }
@@ -458,8 +371,8 @@ func (m *ArmamentMutation) ResetField(name string) error {
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ArmamentMutation) AddedEdges() []string {
 	edges := make([]string, 0, 1)
-	if m._Spacecraft != nil {
-		edges = append(edges, armament.EdgeSpacecraft)
+	if m.spacecrafts != nil {
+		edges = append(edges, armament.EdgeSpacecrafts)
 	}
 	return edges
 }
@@ -468,9 +381,9 @@ func (m *ArmamentMutation) AddedEdges() []string {
 // name in this mutation.
 func (m *ArmamentMutation) AddedIDs(name string) []ent.Value {
 	switch name {
-	case armament.EdgeSpacecraft:
-		ids := make([]ent.Value, 0, len(m._Spacecraft))
-		for id := range m._Spacecraft {
+	case armament.EdgeSpacecrafts:
+		ids := make([]ent.Value, 0, len(m.spacecrafts))
+		for id := range m.spacecrafts {
 			ids = append(ids, id)
 		}
 		return ids
@@ -481,8 +394,8 @@ func (m *ArmamentMutation) AddedIDs(name string) []ent.Value {
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ArmamentMutation) RemovedEdges() []string {
 	edges := make([]string, 0, 1)
-	if m.removed_Spacecraft != nil {
-		edges = append(edges, armament.EdgeSpacecraft)
+	if m.removedspacecrafts != nil {
+		edges = append(edges, armament.EdgeSpacecrafts)
 	}
 	return edges
 }
@@ -491,9 +404,9 @@ func (m *ArmamentMutation) RemovedEdges() []string {
 // the given name in this mutation.
 func (m *ArmamentMutation) RemovedIDs(name string) []ent.Value {
 	switch name {
-	case armament.EdgeSpacecraft:
-		ids := make([]ent.Value, 0, len(m.removed_Spacecraft))
-		for id := range m.removed_Spacecraft {
+	case armament.EdgeSpacecrafts:
+		ids := make([]ent.Value, 0, len(m.removedspacecrafts))
+		for id := range m.removedspacecrafts {
 			ids = append(ids, id)
 		}
 		return ids
@@ -504,8 +417,8 @@ func (m *ArmamentMutation) RemovedIDs(name string) []ent.Value {
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ArmamentMutation) ClearedEdges() []string {
 	edges := make([]string, 0, 1)
-	if m.cleared_Spacecraft {
-		edges = append(edges, armament.EdgeSpacecraft)
+	if m.clearedspacecrafts {
+		edges = append(edges, armament.EdgeSpacecrafts)
 	}
 	return edges
 }
@@ -514,8 +427,8 @@ func (m *ArmamentMutation) ClearedEdges() []string {
 // was cleared in this mutation.
 func (m *ArmamentMutation) EdgeCleared(name string) bool {
 	switch name {
-	case armament.EdgeSpacecraft:
-		return m.cleared_Spacecraft
+	case armament.EdgeSpacecrafts:
+		return m.clearedspacecrafts
 	}
 	return false
 }
@@ -532,8 +445,8 @@ func (m *ArmamentMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *ArmamentMutation) ResetEdge(name string) error {
 	switch name {
-	case armament.EdgeSpacecraft:
-		m.ResetSpacecraft()
+	case armament.EdgeSpacecrafts:
+		m.ResetSpacecrafts()
 		return nil
 	}
 	return fmt.Errorf("unknown Armament edge %s", name)
@@ -553,6 +466,9 @@ type SpacecraftMutation struct {
 	value            *float64
 	addvalue         *float64
 	status           *string
+	created_at       *time.Time
+	updated_at       *time.Time
+	deleted_at       *time.Time
 	clearedFields    map[string]struct{}
 	armaments        map[int]struct{}
 	removedarmaments map[int]struct{}
@@ -916,7 +832,154 @@ func (m *SpacecraftMutation) ResetStatus() {
 	m.status = nil
 }
 
-// AddArmamentIDs adds the "armaments" edge to the Armament entity by ids.
+// SetCreatedAt sets the "created_at" field.
+func (m *SpacecraftMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *SpacecraftMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the Spacecraft entity.
+// If the Spacecraft object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SpacecraftMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ClearCreatedAt clears the value of the "created_at" field.
+func (m *SpacecraftMutation) ClearCreatedAt() {
+	m.created_at = nil
+	m.clearedFields[spacecraft.FieldCreatedAt] = struct{}{}
+}
+
+// CreatedAtCleared returns if the "created_at" field was cleared in this mutation.
+func (m *SpacecraftMutation) CreatedAtCleared() bool {
+	_, ok := m.clearedFields[spacecraft.FieldCreatedAt]
+	return ok
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *SpacecraftMutation) ResetCreatedAt() {
+	m.created_at = nil
+	delete(m.clearedFields, spacecraft.FieldCreatedAt)
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *SpacecraftMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *SpacecraftMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the Spacecraft entity.
+// If the Spacecraft object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SpacecraftMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (m *SpacecraftMutation) ClearUpdatedAt() {
+	m.updated_at = nil
+	m.clearedFields[spacecraft.FieldUpdatedAt] = struct{}{}
+}
+
+// UpdatedAtCleared returns if the "updated_at" field was cleared in this mutation.
+func (m *SpacecraftMutation) UpdatedAtCleared() bool {
+	_, ok := m.clearedFields[spacecraft.FieldUpdatedAt]
+	return ok
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *SpacecraftMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+	delete(m.clearedFields, spacecraft.FieldUpdatedAt)
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (m *SpacecraftMutation) SetDeletedAt(t time.Time) {
+	m.deleted_at = &t
+}
+
+// DeletedAt returns the value of the "deleted_at" field in the mutation.
+func (m *SpacecraftMutation) DeletedAt() (r time.Time, exists bool) {
+	v := m.deleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDeletedAt returns the old "deleted_at" field's value of the Spacecraft entity.
+// If the Spacecraft object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SpacecraftMutation) OldDeletedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDeletedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDeletedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDeletedAt: %w", err)
+	}
+	return oldValue.DeletedAt, nil
+}
+
+// ClearDeletedAt clears the value of the "deleted_at" field.
+func (m *SpacecraftMutation) ClearDeletedAt() {
+	m.deleted_at = nil
+	m.clearedFields[spacecraft.FieldDeletedAt] = struct{}{}
+}
+
+// DeletedAtCleared returns if the "deleted_at" field was cleared in this mutation.
+func (m *SpacecraftMutation) DeletedAtCleared() bool {
+	_, ok := m.clearedFields[spacecraft.FieldDeletedAt]
+	return ok
+}
+
+// ResetDeletedAt resets all changes to the "deleted_at" field.
+func (m *SpacecraftMutation) ResetDeletedAt() {
+	m.deleted_at = nil
+	delete(m.clearedFields, spacecraft.FieldDeletedAt)
+}
+
+// AddArmamentIDs adds the "armaments" edge to the SpacecraftArmament entity by ids.
 func (m *SpacecraftMutation) AddArmamentIDs(ids ...int) {
 	if m.armaments == nil {
 		m.armaments = make(map[int]struct{})
@@ -926,17 +989,17 @@ func (m *SpacecraftMutation) AddArmamentIDs(ids ...int) {
 	}
 }
 
-// ClearArmaments clears the "armaments" edge to the Armament entity.
+// ClearArmaments clears the "armaments" edge to the SpacecraftArmament entity.
 func (m *SpacecraftMutation) ClearArmaments() {
 	m.clearedarmaments = true
 }
 
-// ArmamentsCleared reports if the "armaments" edge to the Armament entity was cleared.
+// ArmamentsCleared reports if the "armaments" edge to the SpacecraftArmament entity was cleared.
 func (m *SpacecraftMutation) ArmamentsCleared() bool {
 	return m.clearedarmaments
 }
 
-// RemoveArmamentIDs removes the "armaments" edge to the Armament entity by IDs.
+// RemoveArmamentIDs removes the "armaments" edge to the SpacecraftArmament entity by IDs.
 func (m *SpacecraftMutation) RemoveArmamentIDs(ids ...int) {
 	if m.removedarmaments == nil {
 		m.removedarmaments = make(map[int]struct{})
@@ -947,7 +1010,7 @@ func (m *SpacecraftMutation) RemoveArmamentIDs(ids ...int) {
 	}
 }
 
-// RemovedArmaments returns the removed IDs of the "armaments" edge to the Armament entity.
+// RemovedArmaments returns the removed IDs of the "armaments" edge to the SpacecraftArmament entity.
 func (m *SpacecraftMutation) RemovedArmamentsIDs() (ids []int) {
 	for id := range m.removedarmaments {
 		ids = append(ids, id)
@@ -1004,7 +1067,7 @@ func (m *SpacecraftMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *SpacecraftMutation) Fields() []string {
-	fields := make([]string, 0, 6)
+	fields := make([]string, 0, 9)
 	if m.name != nil {
 		fields = append(fields, spacecraft.FieldName)
 	}
@@ -1022,6 +1085,15 @@ func (m *SpacecraftMutation) Fields() []string {
 	}
 	if m.status != nil {
 		fields = append(fields, spacecraft.FieldStatus)
+	}
+	if m.created_at != nil {
+		fields = append(fields, spacecraft.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, spacecraft.FieldUpdatedAt)
+	}
+	if m.deleted_at != nil {
+		fields = append(fields, spacecraft.FieldDeletedAt)
 	}
 	return fields
 }
@@ -1043,6 +1115,12 @@ func (m *SpacecraftMutation) Field(name string) (ent.Value, bool) {
 		return m.Value()
 	case spacecraft.FieldStatus:
 		return m.Status()
+	case spacecraft.FieldCreatedAt:
+		return m.CreatedAt()
+	case spacecraft.FieldUpdatedAt:
+		return m.UpdatedAt()
+	case spacecraft.FieldDeletedAt:
+		return m.DeletedAt()
 	}
 	return nil, false
 }
@@ -1064,6 +1142,12 @@ func (m *SpacecraftMutation) OldField(ctx context.Context, name string) (ent.Val
 		return m.OldValue(ctx)
 	case spacecraft.FieldStatus:
 		return m.OldStatus(ctx)
+	case spacecraft.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case spacecraft.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	case spacecraft.FieldDeletedAt:
+		return m.OldDeletedAt(ctx)
 	}
 	return nil, fmt.Errorf("unknown Spacecraft field %s", name)
 }
@@ -1114,6 +1198,27 @@ func (m *SpacecraftMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetStatus(v)
+		return nil
+	case spacecraft.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case spacecraft.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	case spacecraft.FieldDeletedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDeletedAt(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Spacecraft field %s", name)
@@ -1171,7 +1276,17 @@ func (m *SpacecraftMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *SpacecraftMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(spacecraft.FieldCreatedAt) {
+		fields = append(fields, spacecraft.FieldCreatedAt)
+	}
+	if m.FieldCleared(spacecraft.FieldUpdatedAt) {
+		fields = append(fields, spacecraft.FieldUpdatedAt)
+	}
+	if m.FieldCleared(spacecraft.FieldDeletedAt) {
+		fields = append(fields, spacecraft.FieldDeletedAt)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -1184,6 +1299,17 @@ func (m *SpacecraftMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *SpacecraftMutation) ClearField(name string) error {
+	switch name {
+	case spacecraft.FieldCreatedAt:
+		m.ClearCreatedAt()
+		return nil
+	case spacecraft.FieldUpdatedAt:
+		m.ClearUpdatedAt()
+		return nil
+	case spacecraft.FieldDeletedAt:
+		m.ClearDeletedAt()
+		return nil
+	}
 	return fmt.Errorf("unknown Spacecraft nullable field %s", name)
 }
 
@@ -1208,6 +1334,15 @@ func (m *SpacecraftMutation) ResetField(name string) error {
 		return nil
 	case spacecraft.FieldStatus:
 		m.ResetStatus()
+		return nil
+	case spacecraft.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case spacecraft.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	case spacecraft.FieldDeletedAt:
+		m.ResetDeletedAt()
 		return nil
 	}
 	return fmt.Errorf("unknown Spacecraft field %s", name)
@@ -1295,6 +1430,576 @@ func (m *SpacecraftMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown Spacecraft edge %s", name)
+}
+
+// SpacecraftArmamentMutation represents an operation that mutates the SpacecraftArmament nodes in the graph.
+type SpacecraftArmamentMutation struct {
+	config
+	op                Op
+	typ               string
+	id                *int
+	qty               *int
+	addqty            *int
+	clearedFields     map[string]struct{}
+	spacecraft        *int
+	clearedspacecraft bool
+	armament          *int
+	clearedarmament   bool
+	done              bool
+	oldValue          func(context.Context) (*SpacecraftArmament, error)
+	predicates        []predicate.SpacecraftArmament
+}
+
+var _ ent.Mutation = (*SpacecraftArmamentMutation)(nil)
+
+// spacecraftarmamentOption allows management of the mutation configuration using functional options.
+type spacecraftarmamentOption func(*SpacecraftArmamentMutation)
+
+// newSpacecraftArmamentMutation creates new mutation for the SpacecraftArmament entity.
+func newSpacecraftArmamentMutation(c config, op Op, opts ...spacecraftarmamentOption) *SpacecraftArmamentMutation {
+	m := &SpacecraftArmamentMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeSpacecraftArmament,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withSpacecraftArmamentID sets the ID field of the mutation.
+func withSpacecraftArmamentID(id int) spacecraftarmamentOption {
+	return func(m *SpacecraftArmamentMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *SpacecraftArmament
+		)
+		m.oldValue = func(ctx context.Context) (*SpacecraftArmament, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().SpacecraftArmament.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withSpacecraftArmament sets the old SpacecraftArmament of the mutation.
+func withSpacecraftArmament(node *SpacecraftArmament) spacecraftarmamentOption {
+	return func(m *SpacecraftArmamentMutation) {
+		m.oldValue = func(context.Context) (*SpacecraftArmament, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m SpacecraftArmamentMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m SpacecraftArmamentMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *SpacecraftArmamentMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *SpacecraftArmamentMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().SpacecraftArmament.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetQty sets the "qty" field.
+func (m *SpacecraftArmamentMutation) SetQty(i int) {
+	m.qty = &i
+	m.addqty = nil
+}
+
+// Qty returns the value of the "qty" field in the mutation.
+func (m *SpacecraftArmamentMutation) Qty() (r int, exists bool) {
+	v := m.qty
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldQty returns the old "qty" field's value of the SpacecraftArmament entity.
+// If the SpacecraftArmament object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SpacecraftArmamentMutation) OldQty(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldQty is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldQty requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldQty: %w", err)
+	}
+	return oldValue.Qty, nil
+}
+
+// AddQty adds i to the "qty" field.
+func (m *SpacecraftArmamentMutation) AddQty(i int) {
+	if m.addqty != nil {
+		*m.addqty += i
+	} else {
+		m.addqty = &i
+	}
+}
+
+// AddedQty returns the value that was added to the "qty" field in this mutation.
+func (m *SpacecraftArmamentMutation) AddedQty() (r int, exists bool) {
+	v := m.addqty
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetQty resets all changes to the "qty" field.
+func (m *SpacecraftArmamentMutation) ResetQty() {
+	m.qty = nil
+	m.addqty = nil
+}
+
+// SetSpacecraftID sets the "spacecraft_id" field.
+func (m *SpacecraftArmamentMutation) SetSpacecraftID(i int) {
+	m.spacecraft = &i
+}
+
+// SpacecraftID returns the value of the "spacecraft_id" field in the mutation.
+func (m *SpacecraftArmamentMutation) SpacecraftID() (r int, exists bool) {
+	v := m.spacecraft
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSpacecraftID returns the old "spacecraft_id" field's value of the SpacecraftArmament entity.
+// If the SpacecraftArmament object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SpacecraftArmamentMutation) OldSpacecraftID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSpacecraftID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSpacecraftID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSpacecraftID: %w", err)
+	}
+	return oldValue.SpacecraftID, nil
+}
+
+// ResetSpacecraftID resets all changes to the "spacecraft_id" field.
+func (m *SpacecraftArmamentMutation) ResetSpacecraftID() {
+	m.spacecraft = nil
+}
+
+// SetArmamentID sets the "armament_id" field.
+func (m *SpacecraftArmamentMutation) SetArmamentID(i int) {
+	m.armament = &i
+}
+
+// ArmamentID returns the value of the "armament_id" field in the mutation.
+func (m *SpacecraftArmamentMutation) ArmamentID() (r int, exists bool) {
+	v := m.armament
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldArmamentID returns the old "armament_id" field's value of the SpacecraftArmament entity.
+// If the SpacecraftArmament object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SpacecraftArmamentMutation) OldArmamentID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldArmamentID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldArmamentID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldArmamentID: %w", err)
+	}
+	return oldValue.ArmamentID, nil
+}
+
+// ResetArmamentID resets all changes to the "armament_id" field.
+func (m *SpacecraftArmamentMutation) ResetArmamentID() {
+	m.armament = nil
+}
+
+// ClearSpacecraft clears the "spacecraft" edge to the Spacecraft entity.
+func (m *SpacecraftArmamentMutation) ClearSpacecraft() {
+	m.clearedspacecraft = true
+	m.clearedFields[spacecraftarmament.FieldSpacecraftID] = struct{}{}
+}
+
+// SpacecraftCleared reports if the "spacecraft" edge to the Spacecraft entity was cleared.
+func (m *SpacecraftArmamentMutation) SpacecraftCleared() bool {
+	return m.clearedspacecraft
+}
+
+// SpacecraftIDs returns the "spacecraft" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// SpacecraftID instead. It exists only for internal usage by the builders.
+func (m *SpacecraftArmamentMutation) SpacecraftIDs() (ids []int) {
+	if id := m.spacecraft; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetSpacecraft resets all changes to the "spacecraft" edge.
+func (m *SpacecraftArmamentMutation) ResetSpacecraft() {
+	m.spacecraft = nil
+	m.clearedspacecraft = false
+}
+
+// ClearArmament clears the "armament" edge to the Armament entity.
+func (m *SpacecraftArmamentMutation) ClearArmament() {
+	m.clearedarmament = true
+	m.clearedFields[spacecraftarmament.FieldArmamentID] = struct{}{}
+}
+
+// ArmamentCleared reports if the "armament" edge to the Armament entity was cleared.
+func (m *SpacecraftArmamentMutation) ArmamentCleared() bool {
+	return m.clearedarmament
+}
+
+// ArmamentIDs returns the "armament" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ArmamentID instead. It exists only for internal usage by the builders.
+func (m *SpacecraftArmamentMutation) ArmamentIDs() (ids []int) {
+	if id := m.armament; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetArmament resets all changes to the "armament" edge.
+func (m *SpacecraftArmamentMutation) ResetArmament() {
+	m.armament = nil
+	m.clearedarmament = false
+}
+
+// Where appends a list predicates to the SpacecraftArmamentMutation builder.
+func (m *SpacecraftArmamentMutation) Where(ps ...predicate.SpacecraftArmament) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the SpacecraftArmamentMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *SpacecraftArmamentMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.SpacecraftArmament, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *SpacecraftArmamentMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *SpacecraftArmamentMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (SpacecraftArmament).
+func (m *SpacecraftArmamentMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *SpacecraftArmamentMutation) Fields() []string {
+	fields := make([]string, 0, 3)
+	if m.qty != nil {
+		fields = append(fields, spacecraftarmament.FieldQty)
+	}
+	if m.spacecraft != nil {
+		fields = append(fields, spacecraftarmament.FieldSpacecraftID)
+	}
+	if m.armament != nil {
+		fields = append(fields, spacecraftarmament.FieldArmamentID)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *SpacecraftArmamentMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case spacecraftarmament.FieldQty:
+		return m.Qty()
+	case spacecraftarmament.FieldSpacecraftID:
+		return m.SpacecraftID()
+	case spacecraftarmament.FieldArmamentID:
+		return m.ArmamentID()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *SpacecraftArmamentMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case spacecraftarmament.FieldQty:
+		return m.OldQty(ctx)
+	case spacecraftarmament.FieldSpacecraftID:
+		return m.OldSpacecraftID(ctx)
+	case spacecraftarmament.FieldArmamentID:
+		return m.OldArmamentID(ctx)
+	}
+	return nil, fmt.Errorf("unknown SpacecraftArmament field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *SpacecraftArmamentMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case spacecraftarmament.FieldQty:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetQty(v)
+		return nil
+	case spacecraftarmament.FieldSpacecraftID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSpacecraftID(v)
+		return nil
+	case spacecraftarmament.FieldArmamentID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetArmamentID(v)
+		return nil
+	}
+	return fmt.Errorf("unknown SpacecraftArmament field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *SpacecraftArmamentMutation) AddedFields() []string {
+	var fields []string
+	if m.addqty != nil {
+		fields = append(fields, spacecraftarmament.FieldQty)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *SpacecraftArmamentMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case spacecraftarmament.FieldQty:
+		return m.AddedQty()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *SpacecraftArmamentMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case spacecraftarmament.FieldQty:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddQty(v)
+		return nil
+	}
+	return fmt.Errorf("unknown SpacecraftArmament numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *SpacecraftArmamentMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *SpacecraftArmamentMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *SpacecraftArmamentMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown SpacecraftArmament nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *SpacecraftArmamentMutation) ResetField(name string) error {
+	switch name {
+	case spacecraftarmament.FieldQty:
+		m.ResetQty()
+		return nil
+	case spacecraftarmament.FieldSpacecraftID:
+		m.ResetSpacecraftID()
+		return nil
+	case spacecraftarmament.FieldArmamentID:
+		m.ResetArmamentID()
+		return nil
+	}
+	return fmt.Errorf("unknown SpacecraftArmament field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *SpacecraftArmamentMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.spacecraft != nil {
+		edges = append(edges, spacecraftarmament.EdgeSpacecraft)
+	}
+	if m.armament != nil {
+		edges = append(edges, spacecraftarmament.EdgeArmament)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *SpacecraftArmamentMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case spacecraftarmament.EdgeSpacecraft:
+		if id := m.spacecraft; id != nil {
+			return []ent.Value{*id}
+		}
+	case spacecraftarmament.EdgeArmament:
+		if id := m.armament; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *SpacecraftArmamentMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *SpacecraftArmamentMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *SpacecraftArmamentMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedspacecraft {
+		edges = append(edges, spacecraftarmament.EdgeSpacecraft)
+	}
+	if m.clearedarmament {
+		edges = append(edges, spacecraftarmament.EdgeArmament)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *SpacecraftArmamentMutation) EdgeCleared(name string) bool {
+	switch name {
+	case spacecraftarmament.EdgeSpacecraft:
+		return m.clearedspacecraft
+	case spacecraftarmament.EdgeArmament:
+		return m.clearedarmament
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *SpacecraftArmamentMutation) ClearEdge(name string) error {
+	switch name {
+	case spacecraftarmament.EdgeSpacecraft:
+		m.ClearSpacecraft()
+		return nil
+	case spacecraftarmament.EdgeArmament:
+		m.ClearArmament()
+		return nil
+	}
+	return fmt.Errorf("unknown SpacecraftArmament unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *SpacecraftArmamentMutation) ResetEdge(name string) error {
+	switch name {
+	case spacecraftarmament.EdgeSpacecraft:
+		m.ResetSpacecraft()
+		return nil
+	case spacecraftarmament.EdgeArmament:
+		m.ResetArmament()
+		return nil
+	}
+	return fmt.Errorf("unknown SpacecraftArmament edge %s", name)
 }
 
 // UserMutation represents an operation that mutates the User nodes in the graph.

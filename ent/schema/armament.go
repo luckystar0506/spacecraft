@@ -14,15 +14,13 @@ type Armament struct {
 // Fields of the Armament.
 func (Armament) Fields() []ent.Field {
 	return []ent.Field{
-		field.String("title"),
-		field.Int("qty"),
+		field.String("title").Unique(),
 	}
 }
 
 // Edges of the Armament.
 func (Armament) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.From("Spacecraft", Spacecraft.Type).
-			Ref("armaments"),
+		edge.To("spacecrafts", SpacecraftArmament.Type),
 	}
 }

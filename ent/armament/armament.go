@@ -14,31 +14,24 @@ const (
 	FieldID = "id"
 	// FieldTitle holds the string denoting the title field in the database.
 	FieldTitle = "title"
-	// FieldQty holds the string denoting the qty field in the database.
-	FieldQty = "qty"
-	// EdgeSpacecraft holds the string denoting the spacecraft edge name in mutations.
-	EdgeSpacecraft = "Spacecraft"
+	// EdgeSpacecrafts holds the string denoting the spacecrafts edge name in mutations.
+	EdgeSpacecrafts = "spacecrafts"
 	// Table holds the table name of the armament in the database.
 	Table = "armaments"
-	// SpacecraftTable is the table that holds the Spacecraft relation/edge. The primary key declared below.
-	SpacecraftTable = "spacecraft_armaments"
-	// SpacecraftInverseTable is the table name for the Spacecraft entity.
-	// It exists in this package in order to avoid circular dependency with the "spacecraft" package.
-	SpacecraftInverseTable = "spacecrafts"
+	// SpacecraftsTable is the table that holds the spacecrafts relation/edge.
+	SpacecraftsTable = "spacecraft_armaments"
+	// SpacecraftsInverseTable is the table name for the SpacecraftArmament entity.
+	// It exists in this package in order to avoid circular dependency with the "spacecraftarmament" package.
+	SpacecraftsInverseTable = "spacecraft_armaments"
+	// SpacecraftsColumn is the table column denoting the spacecrafts relation/edge.
+	SpacecraftsColumn = "armament_id"
 )
 
 // Columns holds all SQL columns for armament fields.
 var Columns = []string{
 	FieldID,
 	FieldTitle,
-	FieldQty,
 }
-
-var (
-	// SpacecraftPrimaryKey and SpacecraftColumn2 are the table columns denoting the
-	// primary key for the Spacecraft relation (M2M).
-	SpacecraftPrimaryKey = []string{"spacecraft_id", "armament_id"}
-)
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
@@ -63,28 +56,23 @@ func ByTitle(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldTitle, opts...).ToFunc()
 }
 
-// ByQty orders the results by the qty field.
-func ByQty(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldQty, opts...).ToFunc()
-}
-
-// BySpacecraftCount orders the results by Spacecraft count.
-func BySpacecraftCount(opts ...sql.OrderTermOption) OrderOption {
+// BySpacecraftsCount orders the results by spacecrafts count.
+func BySpacecraftsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborsCount(s, newSpacecraftStep(), opts...)
+		sqlgraph.OrderByNeighborsCount(s, newSpacecraftsStep(), opts...)
 	}
 }
 
-// BySpacecraft orders the results by Spacecraft terms.
-func BySpacecraft(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+// BySpacecrafts orders the results by spacecrafts terms.
+func BySpacecrafts(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newSpacecraftStep(), append([]sql.OrderTerm{term}, terms...)...)
+		sqlgraph.OrderByNeighborTerms(s, newSpacecraftsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
-func newSpacecraftStep() *sqlgraph.Step {
+func newSpacecraftsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(SpacecraftInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.M2M, true, SpacecraftTable, SpacecraftPrimaryKey...),
+		sqlgraph.To(SpacecraftsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, SpacecraftsTable, SpacecraftsColumn),
 	)
 }

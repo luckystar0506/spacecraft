@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"spacecraft/ent/spacecraft"
 	"strings"
+	"time"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
@@ -28,6 +29,12 @@ type Spacecraft struct {
 	Value float64 `json:"value,omitempty"`
 	// Status holds the value of the "status" field.
 	Status string `json:"status,omitempty"`
+	// CreatedAt holds the value of the "created_at" field.
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	// UpdatedAt holds the value of the "updated_at" field.
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	// DeletedAt holds the value of the "deleted_at" field.
+	DeletedAt *time.Time `json:"deleted_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the SpacecraftQuery when eager-loading is set.
 	Edges        SpacecraftEdges `json:"edges"`
@@ -37,7 +44,7 @@ type Spacecraft struct {
 // SpacecraftEdges holds the relations/edges for other nodes in the graph.
 type SpacecraftEdges struct {
 	// Armaments holds the value of the armaments edge.
-	Armaments []*Armament `json:"armaments,omitempty"`
+	Armaments []*SpacecraftArmament `json:"armaments,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
 	loadedTypes [1]bool
@@ -45,7 +52,7 @@ type SpacecraftEdges struct {
 
 // ArmamentsOrErr returns the Armaments value or an error if the edge
 // was not loaded in eager-loading.
-func (e SpacecraftEdges) ArmamentsOrErr() ([]*Armament, error) {
+func (e SpacecraftEdges) ArmamentsOrErr() ([]*SpacecraftArmament, error) {
 	if e.loadedTypes[0] {
 		return e.Armaments, nil
 	}
@@ -63,6 +70,8 @@ func (*Spacecraft) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullInt64)
 		case spacecraft.FieldName, spacecraft.FieldClass, spacecraft.FieldImage, spacecraft.FieldStatus:
 			values[i] = new(sql.NullString)
+		case spacecraft.FieldCreatedAt, spacecraft.FieldUpdatedAt, spacecraft.FieldDeletedAt:
+			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -120,6 +129,25 @@ func (s *Spacecraft) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				s.Status = value.String
 			}
+		case spacecraft.FieldCreatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field created_at", values[i])
+			} else if value.Valid {
+				s.CreatedAt = value.Time
+			}
+		case spacecraft.FieldUpdatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
+			} else if value.Valid {
+				s.UpdatedAt = value.Time
+			}
+		case spacecraft.FieldDeletedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field deleted_at", values[i])
+			} else if value.Valid {
+				s.DeletedAt = new(time.Time)
+				*s.DeletedAt = value.Time
+			}
 		default:
 			s.selectValues.Set(columns[i], values[i])
 		}
@@ -134,7 +162,7 @@ func (s *Spacecraft) GetValue(name string) (ent.Value, error) {
 }
 
 // QueryArmaments queries the "armaments" edge of the Spacecraft entity.
-func (s *Spacecraft) QueryArmaments() *ArmamentQuery {
+func (s *Spacecraft) QueryArmaments() *SpacecraftArmamentQuery {
 	return NewSpacecraftClient(s.config).QueryArmaments(s)
 }
 
@@ -178,6 +206,17 @@ func (s *Spacecraft) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(s.Status)
+	builder.WriteString(", ")
+	builder.WriteString("created_at=")
+	builder.WriteString(s.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("updated_at=")
+	builder.WriteString(s.UpdatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	if v := s.DeletedAt; v != nil {
+		builder.WriteString("deleted_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
 	builder.WriteByte(')')
 	return builder.String()
 }

@@ -13,6 +13,7 @@ import (
 
 	"spacecraft/ent/armament"
 	"spacecraft/ent/spacecraft"
+	"spacecraft/ent/spacecraftarmament"
 	"spacecraft/ent/user"
 
 	"entgo.io/ent"
@@ -30,6 +31,8 @@ type Client struct {
 	Armament *ArmamentClient
 	// Spacecraft is the client for interacting with the Spacecraft builders.
 	Spacecraft *SpacecraftClient
+	// SpacecraftArmament is the client for interacting with the SpacecraftArmament builders.
+	SpacecraftArmament *SpacecraftArmamentClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
 }
@@ -47,6 +50,7 @@ func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.Armament = NewArmamentClient(c.config)
 	c.Spacecraft = NewSpacecraftClient(c.config)
+	c.SpacecraftArmament = NewSpacecraftArmamentClient(c.config)
 	c.User = NewUserClient(c.config)
 }
 
@@ -131,11 +135,12 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:        ctx,
-		config:     cfg,
-		Armament:   NewArmamentClient(cfg),
-		Spacecraft: NewSpacecraftClient(cfg),
-		User:       NewUserClient(cfg),
+		ctx:                ctx,
+		config:             cfg,
+		Armament:           NewArmamentClient(cfg),
+		Spacecraft:         NewSpacecraftClient(cfg),
+		SpacecraftArmament: NewSpacecraftArmamentClient(cfg),
+		User:               NewUserClient(cfg),
 	}, nil
 }
 
@@ -153,11 +158,12 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:        ctx,
-		config:     cfg,
-		Armament:   NewArmamentClient(cfg),
-		Spacecraft: NewSpacecraftClient(cfg),
-		User:       NewUserClient(cfg),
+		ctx:                ctx,
+		config:             cfg,
+		Armament:           NewArmamentClient(cfg),
+		Spacecraft:         NewSpacecraftClient(cfg),
+		SpacecraftArmament: NewSpacecraftArmamentClient(cfg),
+		User:               NewUserClient(cfg),
 	}, nil
 }
 
@@ -188,6 +194,7 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	c.Armament.Use(hooks...)
 	c.Spacecraft.Use(hooks...)
+	c.SpacecraftArmament.Use(hooks...)
 	c.User.Use(hooks...)
 }
 
@@ -196,6 +203,7 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	c.Armament.Intercept(interceptors...)
 	c.Spacecraft.Intercept(interceptors...)
+	c.SpacecraftArmament.Intercept(interceptors...)
 	c.User.Intercept(interceptors...)
 }
 
@@ -206,6 +214,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Armament.mutate(ctx, m)
 	case *SpacecraftMutation:
 		return c.Spacecraft.mutate(ctx, m)
+	case *SpacecraftArmamentMutation:
+		return c.SpacecraftArmament.mutate(ctx, m)
 	case *UserMutation:
 		return c.User.mutate(ctx, m)
 	default:
@@ -321,15 +331,15 @@ func (c *ArmamentClient) GetX(ctx context.Context, id int) *Armament {
 	return obj
 }
 
-// QuerySpacecraft queries the Spacecraft edge of a Armament.
-func (c *ArmamentClient) QuerySpacecraft(a *Armament) *SpacecraftQuery {
-	query := (&SpacecraftClient{config: c.config}).Query()
+// QuerySpacecrafts queries the spacecrafts edge of a Armament.
+func (c *ArmamentClient) QuerySpacecrafts(a *Armament) *SpacecraftArmamentQuery {
+	query := (&SpacecraftArmamentClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := a.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(armament.Table, armament.FieldID, id),
-			sqlgraph.To(spacecraft.Table, spacecraft.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, armament.SpacecraftTable, armament.SpacecraftPrimaryKey...),
+			sqlgraph.To(spacecraftarmament.Table, spacecraftarmament.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, armament.SpacecraftsTable, armament.SpacecraftsColumn),
 		)
 		fromV = sqlgraph.Neighbors(a.driver.Dialect(), step)
 		return fromV, nil
@@ -471,14 +481,14 @@ func (c *SpacecraftClient) GetX(ctx context.Context, id int) *Spacecraft {
 }
 
 // QueryArmaments queries the armaments edge of a Spacecraft.
-func (c *SpacecraftClient) QueryArmaments(s *Spacecraft) *ArmamentQuery {
-	query := (&ArmamentClient{config: c.config}).Query()
+func (c *SpacecraftClient) QueryArmaments(s *Spacecraft) *SpacecraftArmamentQuery {
+	query := (&SpacecraftArmamentClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := s.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(spacecraft.Table, spacecraft.FieldID, id),
-			sqlgraph.To(armament.Table, armament.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, false, spacecraft.ArmamentsTable, spacecraft.ArmamentsPrimaryKey...),
+			sqlgraph.To(spacecraftarmament.Table, spacecraftarmament.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, spacecraft.ArmamentsTable, spacecraft.ArmamentsColumn),
 		)
 		fromV = sqlgraph.Neighbors(s.driver.Dialect(), step)
 		return fromV, nil
@@ -508,6 +518,171 @@ func (c *SpacecraftClient) mutate(ctx context.Context, m *SpacecraftMutation) (V
 		return (&SpacecraftDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Spacecraft mutation op: %q", m.Op())
+	}
+}
+
+// SpacecraftArmamentClient is a client for the SpacecraftArmament schema.
+type SpacecraftArmamentClient struct {
+	config
+}
+
+// NewSpacecraftArmamentClient returns a client for the SpacecraftArmament from the given config.
+func NewSpacecraftArmamentClient(c config) *SpacecraftArmamentClient {
+	return &SpacecraftArmamentClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `spacecraftarmament.Hooks(f(g(h())))`.
+func (c *SpacecraftArmamentClient) Use(hooks ...Hook) {
+	c.hooks.SpacecraftArmament = append(c.hooks.SpacecraftArmament, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `spacecraftarmament.Intercept(f(g(h())))`.
+func (c *SpacecraftArmamentClient) Intercept(interceptors ...Interceptor) {
+	c.inters.SpacecraftArmament = append(c.inters.SpacecraftArmament, interceptors...)
+}
+
+// Create returns a builder for creating a SpacecraftArmament entity.
+func (c *SpacecraftArmamentClient) Create() *SpacecraftArmamentCreate {
+	mutation := newSpacecraftArmamentMutation(c.config, OpCreate)
+	return &SpacecraftArmamentCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of SpacecraftArmament entities.
+func (c *SpacecraftArmamentClient) CreateBulk(builders ...*SpacecraftArmamentCreate) *SpacecraftArmamentCreateBulk {
+	return &SpacecraftArmamentCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *SpacecraftArmamentClient) MapCreateBulk(slice any, setFunc func(*SpacecraftArmamentCreate, int)) *SpacecraftArmamentCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &SpacecraftArmamentCreateBulk{err: fmt.Errorf("calling to SpacecraftArmamentClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*SpacecraftArmamentCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &SpacecraftArmamentCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for SpacecraftArmament.
+func (c *SpacecraftArmamentClient) Update() *SpacecraftArmamentUpdate {
+	mutation := newSpacecraftArmamentMutation(c.config, OpUpdate)
+	return &SpacecraftArmamentUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *SpacecraftArmamentClient) UpdateOne(sa *SpacecraftArmament) *SpacecraftArmamentUpdateOne {
+	mutation := newSpacecraftArmamentMutation(c.config, OpUpdateOne, withSpacecraftArmament(sa))
+	return &SpacecraftArmamentUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *SpacecraftArmamentClient) UpdateOneID(id int) *SpacecraftArmamentUpdateOne {
+	mutation := newSpacecraftArmamentMutation(c.config, OpUpdateOne, withSpacecraftArmamentID(id))
+	return &SpacecraftArmamentUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for SpacecraftArmament.
+func (c *SpacecraftArmamentClient) Delete() *SpacecraftArmamentDelete {
+	mutation := newSpacecraftArmamentMutation(c.config, OpDelete)
+	return &SpacecraftArmamentDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *SpacecraftArmamentClient) DeleteOne(sa *SpacecraftArmament) *SpacecraftArmamentDeleteOne {
+	return c.DeleteOneID(sa.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *SpacecraftArmamentClient) DeleteOneID(id int) *SpacecraftArmamentDeleteOne {
+	builder := c.Delete().Where(spacecraftarmament.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &SpacecraftArmamentDeleteOne{builder}
+}
+
+// Query returns a query builder for SpacecraftArmament.
+func (c *SpacecraftArmamentClient) Query() *SpacecraftArmamentQuery {
+	return &SpacecraftArmamentQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeSpacecraftArmament},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a SpacecraftArmament entity by its id.
+func (c *SpacecraftArmamentClient) Get(ctx context.Context, id int) (*SpacecraftArmament, error) {
+	return c.Query().Where(spacecraftarmament.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *SpacecraftArmamentClient) GetX(ctx context.Context, id int) *SpacecraftArmament {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QuerySpacecraft queries the spacecraft edge of a SpacecraftArmament.
+func (c *SpacecraftArmamentClient) QuerySpacecraft(sa *SpacecraftArmament) *SpacecraftQuery {
+	query := (&SpacecraftClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := sa.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(spacecraftarmament.Table, spacecraftarmament.FieldID, id),
+			sqlgraph.To(spacecraft.Table, spacecraft.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, spacecraftarmament.SpacecraftTable, spacecraftarmament.SpacecraftColumn),
+		)
+		fromV = sqlgraph.Neighbors(sa.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryArmament queries the armament edge of a SpacecraftArmament.
+func (c *SpacecraftArmamentClient) QueryArmament(sa *SpacecraftArmament) *ArmamentQuery {
+	query := (&ArmamentClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := sa.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(spacecraftarmament.Table, spacecraftarmament.FieldID, id),
+			sqlgraph.To(armament.Table, armament.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, spacecraftarmament.ArmamentTable, spacecraftarmament.ArmamentColumn),
+		)
+		fromV = sqlgraph.Neighbors(sa.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *SpacecraftArmamentClient) Hooks() []Hook {
+	return c.hooks.SpacecraftArmament
+}
+
+// Interceptors returns the client interceptors.
+func (c *SpacecraftArmamentClient) Interceptors() []Interceptor {
+	return c.inters.SpacecraftArmament
+}
+
+func (c *SpacecraftArmamentClient) mutate(ctx context.Context, m *SpacecraftArmamentMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&SpacecraftArmamentCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&SpacecraftArmamentUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&SpacecraftArmamentUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&SpacecraftArmamentDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown SpacecraftArmament mutation op: %q", m.Op())
 	}
 }
 
@@ -647,9 +822,9 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Armament, Spacecraft, User []ent.Hook
+		Armament, Spacecraft, SpacecraftArmament, User []ent.Hook
 	}
 	inters struct {
-		Armament, Spacecraft, User []ent.Interceptor
+		Armament, Spacecraft, SpacecraftArmament, User []ent.Interceptor
 	}
 )

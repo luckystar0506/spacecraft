@@ -16,6 +16,8 @@ type Tx struct {
 	Armament *ArmamentClient
 	// Spacecraft is the client for interacting with the Spacecraft builders.
 	Spacecraft *SpacecraftClient
+	// SpacecraftArmament is the client for interacting with the SpacecraftArmament builders.
+	SpacecraftArmament *SpacecraftArmamentClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
 
@@ -151,6 +153,7 @@ func (tx *Tx) Client() *Client {
 func (tx *Tx) init() {
 	tx.Armament = NewArmamentClient(tx.config)
 	tx.Spacecraft = NewSpacecraftClient(tx.config)
+	tx.SpacecraftArmament = NewSpacecraftArmamentClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 }
 

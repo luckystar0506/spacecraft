@@ -59,11 +59,6 @@ func Title(v string) predicate.Armament {
 	return predicate.Armament(sql.FieldEQ(FieldTitle, v))
 }
 
-// Qty applies equality check predicate on the "qty" field. It's identical to QtyEQ.
-func Qty(v int) predicate.Armament {
-	return predicate.Armament(sql.FieldEQ(FieldQty, v))
-}
-
 // TitleEQ applies the EQ predicate on the "title" field.
 func TitleEQ(v string) predicate.Armament {
 	return predicate.Armament(sql.FieldEQ(FieldTitle, v))
@@ -129,61 +124,21 @@ func TitleContainsFold(v string) predicate.Armament {
 	return predicate.Armament(sql.FieldContainsFold(FieldTitle, v))
 }
 
-// QtyEQ applies the EQ predicate on the "qty" field.
-func QtyEQ(v int) predicate.Armament {
-	return predicate.Armament(sql.FieldEQ(FieldQty, v))
-}
-
-// QtyNEQ applies the NEQ predicate on the "qty" field.
-func QtyNEQ(v int) predicate.Armament {
-	return predicate.Armament(sql.FieldNEQ(FieldQty, v))
-}
-
-// QtyIn applies the In predicate on the "qty" field.
-func QtyIn(vs ...int) predicate.Armament {
-	return predicate.Armament(sql.FieldIn(FieldQty, vs...))
-}
-
-// QtyNotIn applies the NotIn predicate on the "qty" field.
-func QtyNotIn(vs ...int) predicate.Armament {
-	return predicate.Armament(sql.FieldNotIn(FieldQty, vs...))
-}
-
-// QtyGT applies the GT predicate on the "qty" field.
-func QtyGT(v int) predicate.Armament {
-	return predicate.Armament(sql.FieldGT(FieldQty, v))
-}
-
-// QtyGTE applies the GTE predicate on the "qty" field.
-func QtyGTE(v int) predicate.Armament {
-	return predicate.Armament(sql.FieldGTE(FieldQty, v))
-}
-
-// QtyLT applies the LT predicate on the "qty" field.
-func QtyLT(v int) predicate.Armament {
-	return predicate.Armament(sql.FieldLT(FieldQty, v))
-}
-
-// QtyLTE applies the LTE predicate on the "qty" field.
-func QtyLTE(v int) predicate.Armament {
-	return predicate.Armament(sql.FieldLTE(FieldQty, v))
-}
-
-// HasSpacecraft applies the HasEdge predicate on the "Spacecraft" edge.
-func HasSpacecraft() predicate.Armament {
+// HasSpacecrafts applies the HasEdge predicate on the "spacecrafts" edge.
+func HasSpacecrafts() predicate.Armament {
 	return predicate.Armament(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, SpacecraftTable, SpacecraftPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.O2M, false, SpacecraftsTable, SpacecraftsColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})
 }
 
-// HasSpacecraftWith applies the HasEdge predicate on the "Spacecraft" edge with a given conditions (other predicates).
-func HasSpacecraftWith(preds ...predicate.Spacecraft) predicate.Armament {
+// HasSpacecraftsWith applies the HasEdge predicate on the "spacecrafts" edge with a given conditions (other predicates).
+func HasSpacecraftsWith(preds ...predicate.SpacecraftArmament) predicate.Armament {
 	return predicate.Armament(func(s *sql.Selector) {
-		step := newSpacecraftStep()
+		step := newSpacecraftsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

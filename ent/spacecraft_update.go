@@ -6,9 +6,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"spacecraft/ent/armament"
 	"spacecraft/ent/predicate"
 	"spacecraft/ent/spacecraft"
+	"spacecraft/ent/spacecraftarmament"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -78,17 +79,69 @@ func (su *SpacecraftUpdate) SetStatus(s string) *SpacecraftUpdate {
 	return su
 }
 
-// AddArmamentIDs adds the "armaments" edge to the Armament entity by IDs.
+// SetCreatedAt sets the "created_at" field.
+func (su *SpacecraftUpdate) SetCreatedAt(t time.Time) *SpacecraftUpdate {
+	su.mutation.SetCreatedAt(t)
+	return su
+}
+
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
+func (su *SpacecraftUpdate) SetNillableCreatedAt(t *time.Time) *SpacecraftUpdate {
+	if t != nil {
+		su.SetCreatedAt(*t)
+	}
+	return su
+}
+
+// ClearCreatedAt clears the value of the "created_at" field.
+func (su *SpacecraftUpdate) ClearCreatedAt() *SpacecraftUpdate {
+	su.mutation.ClearCreatedAt()
+	return su
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (su *SpacecraftUpdate) SetUpdatedAt(t time.Time) *SpacecraftUpdate {
+	su.mutation.SetUpdatedAt(t)
+	return su
+}
+
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (su *SpacecraftUpdate) ClearUpdatedAt() *SpacecraftUpdate {
+	su.mutation.ClearUpdatedAt()
+	return su
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (su *SpacecraftUpdate) SetDeletedAt(t time.Time) *SpacecraftUpdate {
+	su.mutation.SetDeletedAt(t)
+	return su
+}
+
+// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
+func (su *SpacecraftUpdate) SetNillableDeletedAt(t *time.Time) *SpacecraftUpdate {
+	if t != nil {
+		su.SetDeletedAt(*t)
+	}
+	return su
+}
+
+// ClearDeletedAt clears the value of the "deleted_at" field.
+func (su *SpacecraftUpdate) ClearDeletedAt() *SpacecraftUpdate {
+	su.mutation.ClearDeletedAt()
+	return su
+}
+
+// AddArmamentIDs adds the "armaments" edge to the SpacecraftArmament entity by IDs.
 func (su *SpacecraftUpdate) AddArmamentIDs(ids ...int) *SpacecraftUpdate {
 	su.mutation.AddArmamentIDs(ids...)
 	return su
 }
 
-// AddArmaments adds the "armaments" edges to the Armament entity.
-func (su *SpacecraftUpdate) AddArmaments(a ...*Armament) *SpacecraftUpdate {
-	ids := make([]int, len(a))
-	for i := range a {
-		ids[i] = a[i].ID
+// AddArmaments adds the "armaments" edges to the SpacecraftArmament entity.
+func (su *SpacecraftUpdate) AddArmaments(s ...*SpacecraftArmament) *SpacecraftUpdate {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
 	}
 	return su.AddArmamentIDs(ids...)
 }
@@ -98,29 +151,30 @@ func (su *SpacecraftUpdate) Mutation() *SpacecraftMutation {
 	return su.mutation
 }
 
-// ClearArmaments clears all "armaments" edges to the Armament entity.
+// ClearArmaments clears all "armaments" edges to the SpacecraftArmament entity.
 func (su *SpacecraftUpdate) ClearArmaments() *SpacecraftUpdate {
 	su.mutation.ClearArmaments()
 	return su
 }
 
-// RemoveArmamentIDs removes the "armaments" edge to Armament entities by IDs.
+// RemoveArmamentIDs removes the "armaments" edge to SpacecraftArmament entities by IDs.
 func (su *SpacecraftUpdate) RemoveArmamentIDs(ids ...int) *SpacecraftUpdate {
 	su.mutation.RemoveArmamentIDs(ids...)
 	return su
 }
 
-// RemoveArmaments removes "armaments" edges to Armament entities.
-func (su *SpacecraftUpdate) RemoveArmaments(a ...*Armament) *SpacecraftUpdate {
-	ids := make([]int, len(a))
-	for i := range a {
-		ids[i] = a[i].ID
+// RemoveArmaments removes "armaments" edges to SpacecraftArmament entities.
+func (su *SpacecraftUpdate) RemoveArmaments(s ...*SpacecraftArmament) *SpacecraftUpdate {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
 	}
 	return su.RemoveArmamentIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (su *SpacecraftUpdate) Save(ctx context.Context) (int, error) {
+	su.defaults()
 	return withHooks(ctx, su.sqlSave, su.mutation, su.hooks)
 }
 
@@ -143,6 +197,14 @@ func (su *SpacecraftUpdate) Exec(ctx context.Context) error {
 func (su *SpacecraftUpdate) ExecX(ctx context.Context) {
 	if err := su.Exec(ctx); err != nil {
 		panic(err)
+	}
+}
+
+// defaults sets the default values of the builder before save.
+func (su *SpacecraftUpdate) defaults() {
+	if _, ok := su.mutation.UpdatedAt(); !ok && !su.mutation.UpdatedAtCleared() {
+		v := spacecraft.UpdateDefaultUpdatedAt()
+		su.mutation.SetUpdatedAt(v)
 	}
 }
 
@@ -179,28 +241,46 @@ func (su *SpacecraftUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := su.mutation.Status(); ok {
 		_spec.SetField(spacecraft.FieldStatus, field.TypeString, value)
 	}
+	if value, ok := su.mutation.CreatedAt(); ok {
+		_spec.SetField(spacecraft.FieldCreatedAt, field.TypeTime, value)
+	}
+	if su.mutation.CreatedAtCleared() {
+		_spec.ClearField(spacecraft.FieldCreatedAt, field.TypeTime)
+	}
+	if value, ok := su.mutation.UpdatedAt(); ok {
+		_spec.SetField(spacecraft.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if su.mutation.UpdatedAtCleared() {
+		_spec.ClearField(spacecraft.FieldUpdatedAt, field.TypeTime)
+	}
+	if value, ok := su.mutation.DeletedAt(); ok {
+		_spec.SetField(spacecraft.FieldDeletedAt, field.TypeTime, value)
+	}
+	if su.mutation.DeletedAtCleared() {
+		_spec.ClearField(spacecraft.FieldDeletedAt, field.TypeTime)
+	}
 	if su.mutation.ArmamentsCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
 			Table:   spacecraft.ArmamentsTable,
-			Columns: spacecraft.ArmamentsPrimaryKey,
+			Columns: []string{spacecraft.ArmamentsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(armament.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(spacecraftarmament.FieldID, field.TypeInt),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := su.mutation.RemovedArmamentsIDs(); len(nodes) > 0 && !su.mutation.ArmamentsCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
 			Table:   spacecraft.ArmamentsTable,
-			Columns: spacecraft.ArmamentsPrimaryKey,
+			Columns: []string{spacecraft.ArmamentsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(armament.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(spacecraftarmament.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -210,13 +290,13 @@ func (su *SpacecraftUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if nodes := su.mutation.ArmamentsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
 			Table:   spacecraft.ArmamentsTable,
-			Columns: spacecraft.ArmamentsPrimaryKey,
+			Columns: []string{spacecraft.ArmamentsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(armament.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(spacecraftarmament.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -294,17 +374,69 @@ func (suo *SpacecraftUpdateOne) SetStatus(s string) *SpacecraftUpdateOne {
 	return suo
 }
 
-// AddArmamentIDs adds the "armaments" edge to the Armament entity by IDs.
+// SetCreatedAt sets the "created_at" field.
+func (suo *SpacecraftUpdateOne) SetCreatedAt(t time.Time) *SpacecraftUpdateOne {
+	suo.mutation.SetCreatedAt(t)
+	return suo
+}
+
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
+func (suo *SpacecraftUpdateOne) SetNillableCreatedAt(t *time.Time) *SpacecraftUpdateOne {
+	if t != nil {
+		suo.SetCreatedAt(*t)
+	}
+	return suo
+}
+
+// ClearCreatedAt clears the value of the "created_at" field.
+func (suo *SpacecraftUpdateOne) ClearCreatedAt() *SpacecraftUpdateOne {
+	suo.mutation.ClearCreatedAt()
+	return suo
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (suo *SpacecraftUpdateOne) SetUpdatedAt(t time.Time) *SpacecraftUpdateOne {
+	suo.mutation.SetUpdatedAt(t)
+	return suo
+}
+
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (suo *SpacecraftUpdateOne) ClearUpdatedAt() *SpacecraftUpdateOne {
+	suo.mutation.ClearUpdatedAt()
+	return suo
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (suo *SpacecraftUpdateOne) SetDeletedAt(t time.Time) *SpacecraftUpdateOne {
+	suo.mutation.SetDeletedAt(t)
+	return suo
+}
+
+// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
+func (suo *SpacecraftUpdateOne) SetNillableDeletedAt(t *time.Time) *SpacecraftUpdateOne {
+	if t != nil {
+		suo.SetDeletedAt(*t)
+	}
+	return suo
+}
+
+// ClearDeletedAt clears the value of the "deleted_at" field.
+func (suo *SpacecraftUpdateOne) ClearDeletedAt() *SpacecraftUpdateOne {
+	suo.mutation.ClearDeletedAt()
+	return suo
+}
+
+// AddArmamentIDs adds the "armaments" edge to the SpacecraftArmament entity by IDs.
 func (suo *SpacecraftUpdateOne) AddArmamentIDs(ids ...int) *SpacecraftUpdateOne {
 	suo.mutation.AddArmamentIDs(ids...)
 	return suo
 }
 
-// AddArmaments adds the "armaments" edges to the Armament entity.
-func (suo *SpacecraftUpdateOne) AddArmaments(a ...*Armament) *SpacecraftUpdateOne {
-	ids := make([]int, len(a))
-	for i := range a {
-		ids[i] = a[i].ID
+// AddArmaments adds the "armaments" edges to the SpacecraftArmament entity.
+func (suo *SpacecraftUpdateOne) AddArmaments(s ...*SpacecraftArmament) *SpacecraftUpdateOne {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
 	}
 	return suo.AddArmamentIDs(ids...)
 }
@@ -314,23 +446,23 @@ func (suo *SpacecraftUpdateOne) Mutation() *SpacecraftMutation {
 	return suo.mutation
 }
 
-// ClearArmaments clears all "armaments" edges to the Armament entity.
+// ClearArmaments clears all "armaments" edges to the SpacecraftArmament entity.
 func (suo *SpacecraftUpdateOne) ClearArmaments() *SpacecraftUpdateOne {
 	suo.mutation.ClearArmaments()
 	return suo
 }
 
-// RemoveArmamentIDs removes the "armaments" edge to Armament entities by IDs.
+// RemoveArmamentIDs removes the "armaments" edge to SpacecraftArmament entities by IDs.
 func (suo *SpacecraftUpdateOne) RemoveArmamentIDs(ids ...int) *SpacecraftUpdateOne {
 	suo.mutation.RemoveArmamentIDs(ids...)
 	return suo
 }
 
-// RemoveArmaments removes "armaments" edges to Armament entities.
-func (suo *SpacecraftUpdateOne) RemoveArmaments(a ...*Armament) *SpacecraftUpdateOne {
-	ids := make([]int, len(a))
-	for i := range a {
-		ids[i] = a[i].ID
+// RemoveArmaments removes "armaments" edges to SpacecraftArmament entities.
+func (suo *SpacecraftUpdateOne) RemoveArmaments(s ...*SpacecraftArmament) *SpacecraftUpdateOne {
+	ids := make([]int, len(s))
+	for i := range s {
+		ids[i] = s[i].ID
 	}
 	return suo.RemoveArmamentIDs(ids...)
 }
@@ -350,6 +482,7 @@ func (suo *SpacecraftUpdateOne) Select(field string, fields ...string) *Spacecra
 
 // Save executes the query and returns the updated Spacecraft entity.
 func (suo *SpacecraftUpdateOne) Save(ctx context.Context) (*Spacecraft, error) {
+	suo.defaults()
 	return withHooks(ctx, suo.sqlSave, suo.mutation, suo.hooks)
 }
 
@@ -372,6 +505,14 @@ func (suo *SpacecraftUpdateOne) Exec(ctx context.Context) error {
 func (suo *SpacecraftUpdateOne) ExecX(ctx context.Context) {
 	if err := suo.Exec(ctx); err != nil {
 		panic(err)
+	}
+}
+
+// defaults sets the default values of the builder before save.
+func (suo *SpacecraftUpdateOne) defaults() {
+	if _, ok := suo.mutation.UpdatedAt(); !ok && !suo.mutation.UpdatedAtCleared() {
+		v := spacecraft.UpdateDefaultUpdatedAt()
+		suo.mutation.SetUpdatedAt(v)
 	}
 }
 
@@ -425,28 +566,46 @@ func (suo *SpacecraftUpdateOne) sqlSave(ctx context.Context) (_node *Spacecraft,
 	if value, ok := suo.mutation.Status(); ok {
 		_spec.SetField(spacecraft.FieldStatus, field.TypeString, value)
 	}
+	if value, ok := suo.mutation.CreatedAt(); ok {
+		_spec.SetField(spacecraft.FieldCreatedAt, field.TypeTime, value)
+	}
+	if suo.mutation.CreatedAtCleared() {
+		_spec.ClearField(spacecraft.FieldCreatedAt, field.TypeTime)
+	}
+	if value, ok := suo.mutation.UpdatedAt(); ok {
+		_spec.SetField(spacecraft.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if suo.mutation.UpdatedAtCleared() {
+		_spec.ClearField(spacecraft.FieldUpdatedAt, field.TypeTime)
+	}
+	if value, ok := suo.mutation.DeletedAt(); ok {
+		_spec.SetField(spacecraft.FieldDeletedAt, field.TypeTime, value)
+	}
+	if suo.mutation.DeletedAtCleared() {
+		_spec.ClearField(spacecraft.FieldDeletedAt, field.TypeTime)
+	}
 	if suo.mutation.ArmamentsCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
 			Table:   spacecraft.ArmamentsTable,
-			Columns: spacecraft.ArmamentsPrimaryKey,
+			Columns: []string{spacecraft.ArmamentsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(armament.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(spacecraftarmament.FieldID, field.TypeInt),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
 	if nodes := suo.mutation.RemovedArmamentsIDs(); len(nodes) > 0 && !suo.mutation.ArmamentsCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
 			Table:   spacecraft.ArmamentsTable,
-			Columns: spacecraft.ArmamentsPrimaryKey,
+			Columns: []string{spacecraft.ArmamentsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(armament.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(spacecraftarmament.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -456,13 +615,13 @@ func (suo *SpacecraftUpdateOne) sqlSave(ctx context.Context) (_node *Spacecraft,
 	}
 	if nodes := suo.mutation.ArmamentsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
 			Table:   spacecraft.ArmamentsTable,
-			Columns: spacecraft.ArmamentsPrimaryKey,
+			Columns: []string{spacecraft.ArmamentsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(armament.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(spacecraftarmament.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

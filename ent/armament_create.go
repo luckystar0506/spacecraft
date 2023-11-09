@@ -7,8 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"spacecraft/ent/armament"
-	"spacecraft/ent/spacecraft"
+	"spacecraft/ent/spacecraftarmament"
 
+	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 )
@@ -18,6 +19,7 @@ type ArmamentCreate struct {
 	config
 	mutation *ArmamentMutation
 	hooks    []Hook
+	conflict []sql.ConflictOption
 }
 
 // SetTitle sets the "title" field.
@@ -26,20 +28,14 @@ func (ac *ArmamentCreate) SetTitle(s string) *ArmamentCreate {
 	return ac
 }
 
-// SetQty sets the "qty" field.
-func (ac *ArmamentCreate) SetQty(i int) *ArmamentCreate {
-	ac.mutation.SetQty(i)
-	return ac
-}
-
-// AddSpacecraftIDs adds the "Spacecraft" edge to the Spacecraft entity by IDs.
+// AddSpacecraftIDs adds the "spacecrafts" edge to the SpacecraftArmament entity by IDs.
 func (ac *ArmamentCreate) AddSpacecraftIDs(ids ...int) *ArmamentCreate {
 	ac.mutation.AddSpacecraftIDs(ids...)
 	return ac
 }
 
-// AddSpacecraft adds the "Spacecraft" edges to the Spacecraft entity.
-func (ac *ArmamentCreate) AddSpacecraft(s ...*Spacecraft) *ArmamentCreate {
+// AddSpacecrafts adds the "spacecrafts" edges to the SpacecraftArmament entity.
+func (ac *ArmamentCreate) AddSpacecrafts(s ...*SpacecraftArmament) *ArmamentCreate {
 	ids := make([]int, len(s))
 	for i := range s {
 		ids[i] = s[i].ID
@@ -84,9 +80,6 @@ func (ac *ArmamentCreate) check() error {
 	if _, ok := ac.mutation.Title(); !ok {
 		return &ValidationError{Name: "title", err: errors.New(`ent: missing required field "Armament.title"`)}
 	}
-	if _, ok := ac.mutation.Qty(); !ok {
-		return &ValidationError{Name: "qty", err: errors.New(`ent: missing required field "Armament.qty"`)}
-	}
 	return nil
 }
 
@@ -113,23 +106,20 @@ func (ac *ArmamentCreate) createSpec() (*Armament, *sqlgraph.CreateSpec) {
 		_node = &Armament{config: ac.config}
 		_spec = sqlgraph.NewCreateSpec(armament.Table, sqlgraph.NewFieldSpec(armament.FieldID, field.TypeInt))
 	)
+	_spec.OnConflict = ac.conflict
 	if value, ok := ac.mutation.Title(); ok {
 		_spec.SetField(armament.FieldTitle, field.TypeString, value)
 		_node.Title = value
 	}
-	if value, ok := ac.mutation.Qty(); ok {
-		_spec.SetField(armament.FieldQty, field.TypeInt, value)
-		_node.Qty = value
-	}
-	if nodes := ac.mutation.SpacecraftIDs(); len(nodes) > 0 {
+	if nodes := ac.mutation.SpacecraftsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
-			Inverse: true,
-			Table:   armament.SpacecraftTable,
-			Columns: armament.SpacecraftPrimaryKey,
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   armament.SpacecraftsTable,
+			Columns: []string{armament.SpacecraftsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(spacecraft.FieldID, field.TypeInt),
+				IDSpec: sqlgraph.NewFieldSpec(spacecraftarmament.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -140,11 +130,160 @@ func (ac *ArmamentCreate) createSpec() (*Armament, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.Armament.Create().
+//		SetTitle(v).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.ArmamentUpsert) {
+//			SetTitle(v+v).
+//		}).
+//		Exec(ctx)
+func (ac *ArmamentCreate) OnConflict(opts ...sql.ConflictOption) *ArmamentUpsertOne {
+	ac.conflict = opts
+	return &ArmamentUpsertOne{
+		create: ac,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.Armament.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (ac *ArmamentCreate) OnConflictColumns(columns ...string) *ArmamentUpsertOne {
+	ac.conflict = append(ac.conflict, sql.ConflictColumns(columns...))
+	return &ArmamentUpsertOne{
+		create: ac,
+	}
+}
+
+type (
+	// ArmamentUpsertOne is the builder for "upsert"-ing
+	//  one Armament node.
+	ArmamentUpsertOne struct {
+		create *ArmamentCreate
+	}
+
+	// ArmamentUpsert is the "OnConflict" setter.
+	ArmamentUpsert struct {
+		*sql.UpdateSet
+	}
+)
+
+// SetTitle sets the "title" field.
+func (u *ArmamentUpsert) SetTitle(v string) *ArmamentUpsert {
+	u.Set(armament.FieldTitle, v)
+	return u
+}
+
+// UpdateTitle sets the "title" field to the value that was provided on create.
+func (u *ArmamentUpsert) UpdateTitle() *ArmamentUpsert {
+	u.SetExcluded(armament.FieldTitle)
+	return u
+}
+
+// UpdateNewValues updates the mutable fields using the new values that were set on create.
+// Using this option is equivalent to using:
+//
+//	client.Armament.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//		).
+//		Exec(ctx)
+func (u *ArmamentUpsertOne) UpdateNewValues() *ArmamentUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.Armament.Create().
+//	    OnConflict(sql.ResolveWithIgnore()).
+//	    Exec(ctx)
+func (u *ArmamentUpsertOne) Ignore() *ArmamentUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *ArmamentUpsertOne) DoNothing() *ArmamentUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the ArmamentCreate.OnConflict
+// documentation for more info.
+func (u *ArmamentUpsertOne) Update(set func(*ArmamentUpsert)) *ArmamentUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&ArmamentUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetTitle sets the "title" field.
+func (u *ArmamentUpsertOne) SetTitle(v string) *ArmamentUpsertOne {
+	return u.Update(func(s *ArmamentUpsert) {
+		s.SetTitle(v)
+	})
+}
+
+// UpdateTitle sets the "title" field to the value that was provided on create.
+func (u *ArmamentUpsertOne) UpdateTitle() *ArmamentUpsertOne {
+	return u.Update(func(s *ArmamentUpsert) {
+		s.UpdateTitle()
+	})
+}
+
+// Exec executes the query.
+func (u *ArmamentUpsertOne) Exec(ctx context.Context) error {
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for ArmamentCreate.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *ArmamentUpsertOne) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// Exec executes the UPSERT query and returns the inserted/updated ID.
+func (u *ArmamentUpsertOne) ID(ctx context.Context) (id int, err error) {
+	node, err := u.create.Save(ctx)
+	if err != nil {
+		return id, err
+	}
+	return node.ID, nil
+}
+
+// IDX is like ID, but panics if an error occurs.
+func (u *ArmamentUpsertOne) IDX(ctx context.Context) int {
+	id, err := u.ID(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
 // ArmamentCreateBulk is the builder for creating many Armament entities in bulk.
 type ArmamentCreateBulk struct {
 	config
 	err      error
 	builders []*ArmamentCreate
+	conflict []sql.ConflictOption
 }
 
 // Save creates the Armament entities in the database.
@@ -173,6 +312,7 @@ func (acb *ArmamentCreateBulk) Save(ctx context.Context) ([]*Armament, error) {
 					_, err = mutators[i+1].Mutate(root, acb.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.OnConflict = acb.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, acb.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -223,6 +363,124 @@ func (acb *ArmamentCreateBulk) Exec(ctx context.Context) error {
 // ExecX is like Exec, but panics if an error occurs.
 func (acb *ArmamentCreateBulk) ExecX(ctx context.Context) {
 	if err := acb.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.Armament.CreateBulk(builders...).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.ArmamentUpsert) {
+//			SetTitle(v+v).
+//		}).
+//		Exec(ctx)
+func (acb *ArmamentCreateBulk) OnConflict(opts ...sql.ConflictOption) *ArmamentUpsertBulk {
+	acb.conflict = opts
+	return &ArmamentUpsertBulk{
+		create: acb,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.Armament.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (acb *ArmamentCreateBulk) OnConflictColumns(columns ...string) *ArmamentUpsertBulk {
+	acb.conflict = append(acb.conflict, sql.ConflictColumns(columns...))
+	return &ArmamentUpsertBulk{
+		create: acb,
+	}
+}
+
+// ArmamentUpsertBulk is the builder for "upsert"-ing
+// a bulk of Armament nodes.
+type ArmamentUpsertBulk struct {
+	create *ArmamentCreateBulk
+}
+
+// UpdateNewValues updates the mutable fields using the new values that
+// were set on create. Using this option is equivalent to using:
+//
+//	client.Armament.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//		).
+//		Exec(ctx)
+func (u *ArmamentUpsertBulk) UpdateNewValues() *ArmamentUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.Armament.Create().
+//		OnConflict(sql.ResolveWithIgnore()).
+//		Exec(ctx)
+func (u *ArmamentUpsertBulk) Ignore() *ArmamentUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *ArmamentUpsertBulk) DoNothing() *ArmamentUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the ArmamentCreateBulk.OnConflict
+// documentation for more info.
+func (u *ArmamentUpsertBulk) Update(set func(*ArmamentUpsert)) *ArmamentUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&ArmamentUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetTitle sets the "title" field.
+func (u *ArmamentUpsertBulk) SetTitle(v string) *ArmamentUpsertBulk {
+	return u.Update(func(s *ArmamentUpsert) {
+		s.SetTitle(v)
+	})
+}
+
+// UpdateTitle sets the "title" field to the value that was provided on create.
+func (u *ArmamentUpsertBulk) UpdateTitle() *ArmamentUpsertBulk {
+	return u.Update(func(s *ArmamentUpsert) {
+		s.UpdateTitle()
+	})
+}
+
+// Exec executes the query.
+func (u *ArmamentUpsertBulk) Exec(ctx context.Context) error {
+	if u.create.err != nil {
+		return u.create.err
+	}
+	for i, b := range u.create.builders {
+		if len(b.conflict) != 0 {
+			return fmt.Errorf("ent: OnConflict was set for builder %d. Set it on the ArmamentCreateBulk instead", i)
+		}
+	}
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for ArmamentCreateBulk.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *ArmamentUpsertBulk) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
 		panic(err)
 	}
 }

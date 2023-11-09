@@ -11,8 +11,7 @@ var (
 	// ArmamentsColumns holds the columns for the "armaments" table.
 	ArmamentsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "title", Type: field.TypeString},
-		{Name: "qty", Type: field.TypeInt},
+		{Name: "title", Type: field.TypeString, Unique: true},
 	}
 	// ArmamentsTable holds the schema information for the "armaments" table.
 	ArmamentsTable = &schema.Table{
@@ -29,12 +28,49 @@ var (
 		{Name: "image", Type: field.TypeString},
 		{Name: "value", Type: field.TypeFloat64},
 		{Name: "status", Type: field.TypeString},
+		{Name: "created_at", Type: field.TypeTime, Nullable: true, Default: "CURRENT_TIMESTAMP"},
+		{Name: "updated_at", Type: field.TypeTime, Nullable: true, Default: "CURRENT_TIMESTAMP"},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
 	}
 	// SpacecraftsTable holds the schema information for the "spacecrafts" table.
 	SpacecraftsTable = &schema.Table{
 		Name:       "spacecrafts",
 		Columns:    SpacecraftsColumns,
 		PrimaryKey: []*schema.Column{SpacecraftsColumns[0]},
+	}
+	// SpacecraftArmamentsColumns holds the columns for the "spacecraft_armaments" table.
+	SpacecraftArmamentsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "qty", Type: field.TypeInt},
+		{Name: "armament_id", Type: field.TypeInt},
+		{Name: "spacecraft_id", Type: field.TypeInt},
+	}
+	// SpacecraftArmamentsTable holds the schema information for the "spacecraft_armaments" table.
+	SpacecraftArmamentsTable = &schema.Table{
+		Name:       "spacecraft_armaments",
+		Columns:    SpacecraftArmamentsColumns,
+		PrimaryKey: []*schema.Column{SpacecraftArmamentsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "spacecraft_armaments_armaments_spacecrafts",
+				Columns:    []*schema.Column{SpacecraftArmamentsColumns[2]},
+				RefColumns: []*schema.Column{ArmamentsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "spacecraft_armaments_spacecrafts_armaments",
+				Columns:    []*schema.Column{SpacecraftArmamentsColumns[3]},
+				RefColumns: []*schema.Column{SpacecraftsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "spacecraftarmament_spacecraft_id_armament_id",
+				Unique:  true,
+				Columns: []*schema.Column{SpacecraftArmamentsColumns[3], SpacecraftArmamentsColumns[2]},
+			},
+		},
 	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
@@ -48,41 +84,16 @@ var (
 		Columns:    UsersColumns,
 		PrimaryKey: []*schema.Column{UsersColumns[0]},
 	}
-	// SpacecraftArmamentsColumns holds the columns for the "spacecraft_armaments" table.
-	SpacecraftArmamentsColumns = []*schema.Column{
-		{Name: "spacecraft_id", Type: field.TypeInt},
-		{Name: "armament_id", Type: field.TypeInt},
-	}
-	// SpacecraftArmamentsTable holds the schema information for the "spacecraft_armaments" table.
-	SpacecraftArmamentsTable = &schema.Table{
-		Name:       "spacecraft_armaments",
-		Columns:    SpacecraftArmamentsColumns,
-		PrimaryKey: []*schema.Column{SpacecraftArmamentsColumns[0], SpacecraftArmamentsColumns[1]},
-		ForeignKeys: []*schema.ForeignKey{
-			{
-				Symbol:     "spacecraft_armaments_spacecraft_id",
-				Columns:    []*schema.Column{SpacecraftArmamentsColumns[0]},
-				RefColumns: []*schema.Column{SpacecraftsColumns[0]},
-				OnDelete:   schema.Cascade,
-			},
-			{
-				Symbol:     "spacecraft_armaments_armament_id",
-				Columns:    []*schema.Column{SpacecraftArmamentsColumns[1]},
-				RefColumns: []*schema.Column{ArmamentsColumns[0]},
-				OnDelete:   schema.Cascade,
-			},
-		},
-	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		ArmamentsTable,
 		SpacecraftsTable,
-		UsersTable,
 		SpacecraftArmamentsTable,
+		UsersTable,
 	}
 )
 
 func init() {
-	SpacecraftArmamentsTable.ForeignKeys[0].RefTable = SpacecraftsTable
-	SpacecraftArmamentsTable.ForeignKeys[1].RefTable = ArmamentsTable
+	SpacecraftArmamentsTable.ForeignKeys[0].RefTable = ArmamentsTable
+	SpacecraftArmamentsTable.ForeignKeys[1].RefTable = SpacecraftsTable
 }

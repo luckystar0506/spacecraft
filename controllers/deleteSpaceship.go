@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gorilla/mux"
 )
@@ -15,10 +16,10 @@ func (sc *SpaceshipController) DeleteSpaceship(w http.ResponseWriter, r *http.Re
 
 	ctx := context.Background()
 
-	err := sc.client.Spacecraft.DeleteOneID(id).Exec(ctx)
+	err := sc.client.Spacecraft.UpdateOneID(id).SetDeletedAt(time.Now()).Exec(ctx)
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Failed to delete spacecraft", http.StatusInternalServerError)
 		return
 	}
 

@@ -32,6 +32,18 @@ func (f SpacecraftFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, 
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.SpacecraftMutation", m)
 }
 
+// The SpacecraftArmamentFunc type is an adapter to allow the use of ordinary
+// function as SpacecraftArmament mutator.
+type SpacecraftArmamentFunc func(context.Context, *ent.SpacecraftArmamentMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f SpacecraftArmamentFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.SpacecraftArmamentMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.SpacecraftArmamentMutation", m)
+}
+
 // The UserFunc type is an adapter to allow the use of ordinary
 // function as User mutator.
 type UserFunc func(context.Context, *ent.UserMutation) (ent.Value, error)
